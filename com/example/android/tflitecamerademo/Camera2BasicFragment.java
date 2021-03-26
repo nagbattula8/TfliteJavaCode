@@ -1,3 +1,5 @@
+//Original code provided by Tensorflow is commented
+
 ///* Copyright 2017 The TensorFlow Authors. All Rights Reserved.
 //
 //Licensed under the Apache License, Version 2.0 (the "License");
@@ -970,7 +972,7 @@
 //}
 
 
-//--------Seperator
+//--------Seperator - Implementation starts from here
 
 
 /* Copyright 2017 The TensorFlow Authors. All Rights Reserved.
