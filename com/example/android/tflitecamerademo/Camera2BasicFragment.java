@@ -910,6 +910,8 @@ public class Camera2BasicFragment extends Fragment
                     //updateActiveModel();
                     openCamera(textureView.getWidth(), textureView.getHeight());
 
+                    //Load All models
+
                     loadModel("inception_v1","CPU");
                     loadModel("inception_v1","GPU");
                     loadModel("inception_v1","DSP");
