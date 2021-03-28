@@ -27,9 +27,11 @@ Initializes the model with model_name on the device specified (CPU, GPU or DSP)
 
 		A. Remove an element from the top of each model's queue.
 		B. If it is not an empty element:
-			B1: Remove all other elements in the queue which are not empty and fill their places with empty elements. Batch these elements with the model extracted in B
+			B1: Remove all other elements in the queue which are not empty and fill their places with empty elements.
+			Batch these elements with the model extracted in B
 		C. Execute each batched model in B.
-		D. If a model instance arrives at time t, add it to its respective queue. Or else add empty element to each queue because we removed an element from each queue in B.
+		D. If a model instance arrives at time t, add it to its respective queue.
+		Or else add empty element to each queue because we removed an element from each queue in B.
 
 ImageClassifier.java:
 	
