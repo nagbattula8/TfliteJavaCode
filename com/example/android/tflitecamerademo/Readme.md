@@ -12,6 +12,8 @@ Initializes the model with model_name on the device specified (CPU, GPU or DSP)
 	One background handler thread for each model is started and the online scheduler algorithm is run.
 
 	int timings[]: timings of the arrival of different models.
+	
+
 	string arrivals[]: names of the models arriving in the above timings
 
 
