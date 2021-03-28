@@ -26,7 +26,7 @@ Initializes the model with model_name on the device specified (CPU, GPU or DSP)
 		For a time t
 
 		A. Remove an element from the top of each model's queue.
-		B. If it is not an empty element:
+		B. For each element removed in step A, if it is not an empty element:
 			B1: Remove all other elements in the queue which are not empty and fill their places with empty elements.
 			Batch these elements with the model extracted in B
 		C. Execute each batched model in B.
