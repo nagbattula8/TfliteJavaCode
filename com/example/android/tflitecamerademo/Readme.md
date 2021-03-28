@@ -1,4 +1,6 @@
 
+Camera2BasicFragment.java
+
 Methods:
 
 1. loadModel(model_name,device):
@@ -28,4 +30,8 @@ Initializes the model with model_name on the device specified (CPU, GPU or DSP)
 			B1: Remove all other elements in the queue which are not empty and fill their places with empty elements. Batch these elements with the model extracted in B
 		C. Execute each batched model in B.
 		D. If a model instance arrives at time t, add it to its respective queue. Or else add empty element to each queue because we removed an element from each queue in B.
+
+ImageClassifier.java:
+	
+	Abstract class provided by TFLite documentation which contains some methods that are implemented by respective models' classes.
 
