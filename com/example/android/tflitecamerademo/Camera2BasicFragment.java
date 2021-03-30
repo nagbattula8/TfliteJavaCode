@@ -1646,20 +1646,20 @@ public class Camera2BasicFragment extends Fragment
 
             //Execution times of different batches
 
-            int [] batch_execs_cpu_inception_v1 = new int[]{106544,184402,286537,363560,435590,490809,529548,698705,714818,830517};
-            int [] batch_execs_cpu_inception_v3 = new int[] {93928,182705,287708,364012,1112999,1154838,1641064,1579348,1934691,2814480};
-            int [] batch_execs_cpu_mobilenet_v1 = new int[] {23243,18335,27468,36255,178833,225876,260722,284881,384387,465750};
-            int [] batch_execs_cpu_mobilenet_v2 = new int[] {7346,14638,21618,254252,249943,398295,475733,490799,442993,563887};
+            int [] batch_execs_cpu_inception_v1 = new int[]{31886,184402,286537,363560,435590,490809,529548,698705,714818,830517};
+            int [] batch_execs_cpu_inception_v3 = new int[] {47897,182705,287708,364012,1112999,1154838,1641064,1579348,1934691,2814480};
+            int [] batch_execs_cpu_mobilenet_v1 = new int[] {2458,18335,27468,36255,178833,225876,260722,284881,384387,465750};
+            int [] batch_execs_cpu_mobilenet_v2 = new int[] {11545,14638,21618,254252,249943,398295,475733,490799,442993,563887};
 
-            int [] batch_execs_gpu_inception_v1 = new int[]{79388,139673,216921,  76363,  95385,  114555, 133657, 153274, 172524, 190385};
+            int [] batch_execs_gpu_inception_v1 = new int[]{29724,139673,216921,  76363,  95385,  114555, 133657, 153274, 172524, 190385};
             int [] batch_execs_gpu_inception_v3 = new int[] {100206, 85484+30000, 134462, 271798, 341431, 410127, 478727, 549210, 616380, 686648};
-            int [] batch_execs_gpu_mobilenet_v1 = new int[] {10159,  19172,  28627,  39135,  33110,  39800,  46295,  52916,  59414,  66000};
-            int [] batch_execs_gpu_mobilenet_v2 = new int[] {6549,  7349,  7883,  22814,  28264,  34148,  39791,  45624,  51099,  56535};
+            int [] batch_execs_gpu_mobilenet_v1 = new int[] {5199,  19172,  28627,  39135,  33110,  39800,  46295,  52916,  59414,  66000};
+            int [] batch_execs_gpu_mobilenet_v2 = new int[] {11712,  7349,  7883,  22814,  28264,  34148,  39791,  45624,  51099,  56535};
 
-            int [] batch_execs_dsp_inception_v1 = new int[]{231912,   336676,  514851,  27853,  35073,  41906,  48824,  55950,  62274,  69675};
-            int [] batch_execs_dsp_inception_v3 = new int[] {283545,410043,559067,666627,89122,104742,120341,135057,150335,165684};
-            int [] batch_execs_dsp_mobilenet_v1 = new int[] {57300,94026,110159,115359,11427,12559,14644,16609,18355,20203};
-            int [] batch_execs_dsp_mobilenet_v2 = new int[] {84900,  119237,   158916,  13095,  15420,  17884,  20311,  22666,  24897,  27032};
+            int [] batch_execs_dsp_inception_v1 = new int[]{11302,   336676,  514851,  27853,  35073,  41906,  48824,  55950,  62274,  69675};
+            int [] batch_execs_dsp_inception_v3 = new int[] {79552,410043,559067,666627,89122,104742,120341,135057,150335,165684};
+            int [] batch_execs_dsp_mobilenet_v1 = new int[] {2991,94026,110159,115359,11427,12559,14644,16609,18355,20203};
+            int [] batch_execs_dsp_mobilenet_v2 = new int[] {8111,  119237,   158916,  13095,  15420,  17884,  20311,  22666,  24897,  27032};
 
 
 
