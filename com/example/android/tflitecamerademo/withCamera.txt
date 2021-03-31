@@ -908,7 +908,7 @@ public class Camera2BasicFragment extends Fragment
             public void onClick(View view) {
                 if (textureView.isAvailable()) {
                     //updateActiveModel();
-                    //openCamera(textureView.getWidth(), textureView.getHeight());
+                    openCamera(textureView.getWidth(), textureView.getHeight());
 
                     //Load All models
 
@@ -1535,7 +1535,7 @@ public class Camera2BasicFragment extends Fragment
 
 
             int[] timings = new int[]{0,
-                    14,
+            14,
                     33,
                     129,
                     155,
