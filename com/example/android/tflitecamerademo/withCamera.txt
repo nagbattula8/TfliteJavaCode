@@ -1657,7 +1657,7 @@ public class Camera2BasicFragment extends Fragment
             int [] batch_execs_gpu_mobilenet_v2 = new int[] {11712,  7349,  7883,  22814,  28264,  34148,  39791,  45624,  51099,  56535};
 
             int [] batch_execs_dsp_inception_v1 = new int[]{11302,   336676,  514851,  27853,  35073,  41906,  48824,  55950,  62274,  69675};
-            int [] batch_execs_dsp_inception_v3 = new int[] {79552,410043,559067,666627,89122,104742,120341,135057,150335,165684};
+            int [] batch_execs_dsp_inception_v3 = new int[] {46968,410043,559067,666627,89122,104742,120341,135057,150335,165684};
             int [] batch_execs_dsp_mobilenet_v1 = new int[] {2991,94026,110159,115359,11427,12559,14644,16609,18355,20203};
             int [] batch_execs_dsp_mobilenet_v2 = new int[] {8111,  119237,   158916,  13095,  15420,  17884,  20311,  22666,  24897,  27032};
 

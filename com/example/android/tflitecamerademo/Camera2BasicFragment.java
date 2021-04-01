@@ -45,6 +45,7 @@ import android.hardware.camera2.CaptureResult;
 import android.hardware.camera2.TotalCaptureResult;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.ImageReader;
+import android.media.MediaMetadataRetriever;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -162,6 +163,9 @@ public class Camera2BasicFragment extends Fragment
 
     /** Max preview height that is guaranteed by Camera2 API */
     private static final int MAX_PREVIEW_HEIGHT = 1080;
+
+    private MediaMetadataRetriever mediaMetadataRetriever = new MediaMetadataRetriever();
+    String uri = "/storage/emulated/0/DCIM/Camera/VID_20210331_131355.mp4";
 
     /**
      * {@link TextureView.SurfaceTextureListener} handles several lifecycle events on a {@link
@@ -932,6 +936,8 @@ public class Camera2BasicFragment extends Fragment
                     loadModel("mobilenet_v2","GPU");
                     loadModel("mobilenet_v2","DSP");
 
+                    mediaMetadataRetriever.setDataSource(uri);
+
 
 
 
@@ -1652,12 +1658,12 @@ public class Camera2BasicFragment extends Fragment
             int [] batch_execs_cpu_mobilenet_v2 = new int[] {11545,14638,21618,254252,249943,398295,475733,490799,442993,563887};
 
             int [] batch_execs_gpu_inception_v1 = new int[]{29724,139673,216921,  76363,  95385,  114555, 133657, 153274, 172524, 190385};
-            int [] batch_execs_gpu_inception_v3 = new int[] {100206, 85484+30000, 134462, 271798, 341431, 410127, 478727, 549210, 616380, 686648};
+            int [] batch_execs_gpu_inception_v3 = new int[] {78798, 85484+30000, 134462, 271798, 341431, 410127, 478727, 549210, 616380, 686648};
             int [] batch_execs_gpu_mobilenet_v1 = new int[] {5199,  19172,  28627,  39135,  33110,  39800,  46295,  52916,  59414,  66000};
             int [] batch_execs_gpu_mobilenet_v2 = new int[] {11712,  7349,  7883,  22814,  28264,  34148,  39791,  45624,  51099,  56535};
 
             int [] batch_execs_dsp_inception_v1 = new int[]{11302,   336676,  514851,  27853,  35073,  41906,  48824,  55950,  62274,  69675};
-            int [] batch_execs_dsp_inception_v3 = new int[] {79552,410043,559067,666627,89122,104742,120341,135057,150335,165684};
+            int [] batch_execs_dsp_inception_v3 = new int[] {46968,410043,559067,666627,89122,104742,120341,135057,150335,165684};
             int [] batch_execs_dsp_mobilenet_v1 = new int[] {2991,94026,110159,115359,11427,12559,14644,16609,18355,20203};
             int [] batch_execs_dsp_mobilenet_v2 = new int[] {8111,  119237,   158916,  13095,  15420,  17884,  20311,  22666,  24897,  27032};
 
@@ -1720,6 +1726,8 @@ public class Camera2BasicFragment extends Fragment
                 mobilenet_v2_queue.add("no");
                 q.add("no");
             }
+
+
 
             for ( int i = 0; i < timings[timings.length-1]+200; i++ ) {
 
@@ -3985,7 +3993,7 @@ public class Camera2BasicFragment extends Fragment
         }
 
 
-        if (classifierNow == null || getActivity() == null || cameraDevice == null) {
+        if (classifierNow == null || getActivity() == null ) {
             // It"s important to not call showToast every frame, or else the app will starve and
             // hang. updateActiveModel() already puts an error message up with showToast.
             // showToast("Uninitialized Classifier or invalid context.");
@@ -4010,7 +4018,23 @@ public class Camera2BasicFragment extends Fragment
 //            classifier= new ImageClassifierQuantizedMobileNet(getActivity());
 
             textToShow = new SpannableStringBuilder();
-            Bitmap bitmap = textureView.getBitmap(classifier.getImageSizeX(), classifier.getImageSizeY());
+
+
+
+            //Get frame to bitmap
+            Bitmap bmFrame = mediaMetadataRetriever.getFrameAtTime(10000);
+
+
+            //Bitmap bitmap = textureView.getBitmap(classifier.getImageSizeX(), classifier.getImageSizeY());
+
+            Bitmap resizedBitmap = Bitmap.createScaledBitmap(
+                    bmFrame, classifierNow.getImageSizeX(), classifierNow.getImageSizeY(), false);
+
+
+
+            Bitmap bitmap = resizedBitmap;
+
+            //classify Bitmap
             Long l1 = classifier.classifyFrame(bitmap, textToShow,thread_name);
             bitmap.recycle();
 

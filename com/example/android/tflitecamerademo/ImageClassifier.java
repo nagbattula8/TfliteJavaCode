@@ -110,11 +110,16 @@ public abstract class ImageClassifier {
   /** holds an nnapi delegate */
   NnApiDelegate nnapiDelegate = null;
 
+  Activity activityPresent;
+
   /** Initializes an {@code ImageClassifier}. */
   ImageClassifier(Activity activity) throws IOException {
     tfliteModel = loadModelFile(activity);
     tflite = new Interpreter(tfliteModel, tfliteOptions);
     labelList = loadLabelList(activity);
+    activityPresent = activity;
+
+
 
 
 
@@ -258,22 +263,22 @@ public abstract class ImageClassifier {
       recreateInterpreter();
     }
   }
-  public void useDsp(Activity activity) {
 
-    System.out.println("Activity direc\t" + activity.getApplicationInfo().nativeLibraryDir);
+  public void useDSP() {
 
+    System.out.println(activityPresent.getApplicationInfo().nativeLibraryDir + " Native");
 
-    if (hexagonDelegate == null) {
-
-      try {
-        hexagonDelegate = new HexagonDelegate(activity);
-        tfliteOptions.addDelegate(hexagonDelegate);
-      } catch (UnsupportedOperationException e) {
-        // Hexagon delegate is not supported on this device.
-      }
-      recreateInterpreter();
+    try {
+      hexagonDelegate = new HexagonDelegate(activityPresent);
+      tfliteOptions.addDelegate(hexagonDelegate);
+    } catch (UnsupportedOperationException e) {
+      // Hexagon delegate is not supported on this device.
     }
+
+    recreateInterpreter();
+
   }
+
   public void useCPU() {
     recreateInterpreter();
   }
