@@ -40,6 +40,7 @@ public class ImageClassifierInceptionV1Quant extends ImageClassifier {
      */
     ImageClassifierInceptionV1Quant(Activity activity) throws IOException {
         super(activity);
+        labelProbArray = new byte[1][getNumLabels()];
     }
 
     @Override
@@ -52,7 +53,7 @@ public class ImageClassifierInceptionV1Quant extends ImageClassifier {
 
     @Override
     protected String getLabelPath() {
-        return "imagenet_labels.txt";
+        return "labels_mobilenet_quant_v1_224.txt";
     }
 
     @Override
@@ -95,32 +96,8 @@ public class ImageClassifierInceptionV1Quant extends ImageClassifier {
 
     @Override
     protected void runInference() {
-
-        Tensor t1 = tflite.getInputTensor(0);
-
-        int[] dims = t1.shape();
-
-        for ( int dim : dims ){
-            System.out.println("Dimension " + dim + getModelPath());
-        }
-
-        long startModel = SystemClock.uptimeMillis();
-
-
-        int[] timings2 = new int[] {2,224,224,3};
-
-        tflite.resizeInput(0,timings2);
-
-        long endModel = SystemClock.uptimeMillis();
-
-        System.out.println("Resize time " + (endModel-startModel));
-
-
-
-
         tflite.run(imgData, labelProbArray);
     }
-
 
     @Override
     protected void runInference2(int tentative) {
@@ -140,13 +117,14 @@ public class ImageClassifierInceptionV1Quant extends ImageClassifier {
 
         tflite.resizeInput(0,timings2);
 
+        for ( int dim : dims ){
+            System.out.println("Dimension " + dim + getModelPath());
+        }
+
+
         long endModel = SystemClock.uptimeMillis();
 
         System.out.println("Resize time " + (endModel-startModel));
-
-        if (labelProbArray == null)
-            labelProbArray = new byte[tentative][getNumLabels()];
-
 
 
 

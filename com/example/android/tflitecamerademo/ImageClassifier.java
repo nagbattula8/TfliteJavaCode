@@ -63,7 +63,7 @@ public abstract class ImageClassifier {
   /** Dimensions of inputs. */
   private static final int DIM_BATCH_SIZE = 2;
 
-  private static int tentative_batch_size = 1;
+  private static int tentative_batch_size = 2;
 
   private static final int DIM_PIXEL_SIZE = 3;
 
@@ -175,6 +175,7 @@ public abstract class ImageClassifier {
     imgData.order(ByteOrder.nativeOrder());
 
     String model_name = getModelPath();
+    String fullName = model_name;
 
     Log.d("model_name",model_name);
 
@@ -199,7 +200,7 @@ public abstract class ImageClassifier {
     Date date = new Date();
     System.out.println();
 
-    Log.d(TAG, "Timecost to run model inference: " + model_name + "    " + Long.toString(endTime - startTime) + " " + formatter.format(date) );
+    Log.d(TAG, "Timecost to run model inference: " + fullName + "    " + Long.toString(endTime - startTime) + " " + formatter.format(date) );
 
 
 
@@ -270,6 +271,7 @@ public abstract class ImageClassifier {
 
     try {
       hexagonDelegate = new HexagonDelegate(activityPresent);
+
       tfliteOptions.addDelegate(hexagonDelegate);
     } catch (UnsupportedOperationException e) {
       // Hexagon delegate is not supported on this device.

@@ -1,0 +1,785 @@
+            for ( int i = 0; i < timings[timings.length-1]+200; i++ ) {
+
+                TimeUnit.MILLISECONDS.sleep(1);
+
+                //Printing current loads in the devices
+
+                if( cpu_exec_current > 0 ) {
+
+                    cpu_exec_current-=1;
+                    System.out.println("Current time = " + i + " cpu remaining = " + cpu_exec_current + " gpu remaining = " + gpu_exec_current + " dsp remaining = " + dsp_exec_current);
+
+                }
+
+                if ( gpu_exec_current > 0 ) {
+                    gpu_exec_current-=1;
+                    System.out.println("Current time = " + i + " cpu remaining = " + cpu_exec_current + " gpu remaining = " + gpu_exec_current + " dsp remaining = " + dsp_exec_current);
+                }
+
+                if ( dsp_exec_current > 0 ) {
+                    dsp_exec_current-=1;
+                    System.out.println("Current time = " + i + " cpu remaining = " + cpu_exec_current + " gpu remaining = " + gpu_exec_current + " dsp remaining = " + dsp_exec_current);
+                }
+
+//                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+//                    writeToFile(String.valueOf(inception_v1_queue.size())+"\n",getContext(),"queueSize.txt");
+//                }
+
+
+                String inception_queue_element = "";
+                String inception_v3_queue_element = "";
+                String inception_v2_queue_element = "";
+                String mobilenet_queue_element = "";
+                String mobilenet_v2_queue_element = "";
+
+                if ( inception_v1_queue.size() != 0 ) {
+                    inception_queue_element = inception_v1_queue.remove(0);
+                }
+
+                if ( inception_v3_queue.size() != 0 ) {
+                    inception_v3_queue_element = inception_v3_queue.remove(0);
+                }
+
+                if ( inception_v2_queue.size() != 0 ) {
+                    inception_v2_queue_element = inception_v2_queue.remove(0);
+                }
+
+
+                if ( mobilenet_v1_queue.size() != 0 ) {
+                    mobilenet_queue_element = mobilenet_v1_queue.remove(0);
+                }
+
+                if ( mobilenet_v2_queue.size() != 0 ) {
+                    mobilenet_v2_queue_element = mobilenet_v2_queue.remove(0);
+                }
+
+                //Getting an instance from the queue's beginning after it has completed its wait time
+                if (!inception_queue_element.equals("no") && !inception_queue_element.equals("")) { //inception_v1 instance
+
+
+                    int temp_wait_time = queueSize;
+
+                    int first_arrival_latest = (i-queueSize);
+
+                    //Printing the logs
+
+                    System.out.println("iModel = " + inception_queue_element + " Arrival_time = "+ first_arrival_latest + " Wait_time " + (temp_wait_time));
+
+                    System.out.println("Queue element \t " + inception_queue_element);
+
+
+
+                    int batchSize = 1;
+
+                    //Finding other instances in the queue which came in the wait time
+
+                    while (inception_v1_queue.contains(inception_queue_element)) {
+
+                        int indexElement = inception_v1_queue.indexOf(inception_queue_element);
+
+                        inception_v1_queue.remove(inception_queue_element);
+
+
+                        System.out.println("iModel = " + inception_queue_element + " Arrival_time = "+ (first_arrival_latest + indexElement + batchSize) + " Wait_time " + (temp_wait_time - indexElement-1));
+
+                        inception_v1_queue.add("no");
+                        batchSize += 1;
+
+                    }
+
+                    String toWrite = "Timing = " + String.valueOf(i) + " Model = " + inception_queue_element + " Batch = " + String.valueOf(batchSize) + "  " + j + " Queue size = " + inception_v1_queue.size();
+
+
+
+                    int modelArrival = arrivals.remove(0);
+
+                    int cpuTotal = (int)(batch_execs_cpu_inception_v1[batchSize-1]/1000);
+
+                    int gpuTotal = (int)(batch_execs_gpu_inception_v1[batchSize-1]/1000);
+
+                    int dspTotal = (int)(batch_execs_dsp_inception_v1[batchSize-1]/1000);
+
+                    if ( !isLoadedInception[0] ) {
+                        cpuTotal+=inception_v1_load_times[0];
+                    }
+                    if ( !isLoadedInception[1] ) {
+                        gpuTotal+=inception_v1_load_times[1];
+                    }
+
+                    if ( !isLoadedInception[2]) {
+                        dspTotal+=inception_v1_load_times[2];
+                    }
+
+
+                    int cpuTotalCopy = cpuTotal;
+                    int gpuTotalCopy = gpuTotal;
+                    int dspTotalCopy = dspTotal;
+
+                    cpuTotal += cpu_exec_current;
+                    gpuTotal += gpu_exec_current;
+                    dspTotal += dsp_exec_current;
+
+                    String processorNow = "";
+
+                    //Execute on CPU
+
+                    if ( cpuTotal <= gpuTotal && cpuTotal <= dspTotal) {
+                        processorNow = processorNow.concat("CPU");
+
+                        cpu_exec_current+=cpuTotalCopy;
+                        System.out.println("iModel = " + inception_queue_element + " Batch size = " + batchSize + " Arrival_time = "+ first_arrival_latest + " Wait_time " + (temp_wait_time-1) +" Execution time = " + cpu_exec_current + " Processor = " + processorNow);
+
+                        isLoadedInception[0] = true;
+
+//                        backgroundHandler.post(periodicClassifyForThreadInceptionV1Cpu); // Run model
+
+                    }
+
+
+                    //Execute on GPU
+                    else if ( gpuTotal <= cpuTotal && gpuTotal <= dspTotal ) {
+                        processorNow = processorNow.concat("GPU");
+                        gpu_exec_current+=gpuTotalCopy;
+
+                        System.out.println("iModel = " + inception_queue_element + " Batch size = " + batchSize + " Arrival_time = "+ first_arrival_latest + " Wait_time " + (temp_wait_time-1) +" Execution time = " + gpu_exec_current + " Processor = " + processorNow );
+
+                        isLoadedInception[1] = true;
+//                      backgroundHandler2.post(periodicClassifyForThreadinceptionV1Gpu);
+                    }
+//
+                    //Execute on DSP
+                    else {
+                        processorNow = processorNow.concat("DSP");
+                        dsp_exec_current+=dspTotalCopy;
+
+                        System.out.println("iModel = " + inception_queue_element + " Batch size = " + batchSize + " Arrival_time = "+ first_arrival_latest + " Wait_time " + (temp_wait_time-1)+" Execution time = " + dsp_exec_current + " Processor = " + processorNow);
+                        isLoadedInception[2] = true;
+//                      backgroundHandler3.post(periodicClassifyForThreadinceptionV1Dsp);
+                    }
+
+
+                    System.out.println("Timing = " + i + " CPU total = " + cpuTotal + " Gpu total = " + gpuTotal);
+
+
+                    System.out.println("Timing = " + i + " Model = " + inception_queue_element + " Batch = " + batchSize + "Arrival = " + modelArrival + "Processor = " + processorNow + " Execs times = " + cpu_exec_current + " " + gpu_exec_current + " " + dsp_exec_current);
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        writeToFile(toWrite+"\n",getContext(),"inceptionV1.txt");
+                    }
+
+                }
+
+                //
+
+                if (!inception_v2_queue_element.equals("no") && !inception_v2_queue_element.equals("")) {
+
+
+                    System.out.println("Queue element \t " + inception_v2_queue_element);
+
+                    int batchSize = 1;
+
+                    while (inception_v2_queue.contains(inception_v2_queue_element)) {
+                        inception_v2_queue.remove(inception_v2_queue_element);
+                        inception_v2_queue.add("no");
+                        batchSize += 1;
+                    }
+
+                    String toWrite = "Timing = " + String.valueOf(i) + " Model = " + inception_v2_queue_element + " Batch = " + String.valueOf(batchSize) + "  " + j + " Queue size = " + inception_v2_queue.size();
+
+
+
+                    int modelArrival = arrivals.remove(0);
+
+                    int cpuTotal = (int)(batch_execs_cpu_inception_v1[batchSize-1]/1000);
+
+                    int gpuTotal = (int)(batch_execs_gpu_inception_v1[batchSize-1]/1000);
+
+                    int dspTotal = (int)(batch_execs_dsp_inception_v1[batchSize-1]/1000);
+
+
+                    /*if ( !batchLoadedInceptionV2Cpu[batchSize] ) {
+                        cpuTotal+=inception_v2_load_times[0];
+                        //isLoadedInception[0] = true;
+                    }
+                    if ( !batchLoadedInceptionV2Gpu[batchSize] ) {
+                        gpuTotal+=inception_v2_load_times[1];
+                        //isLoadedInception[0] = true;
+                    }
+                    if ( !batchLoadedInceptionV2Dsp[batchSize] ) {
+                        dspTotal+=inception_v2_load_times[2];
+                        //isLoadedInception[0] = true;
+                    } */
+
+                    int cpuTotalCopy = cpuTotal;
+                    int gpuTotalCopy = gpuTotal;
+                    int dspTotalCopy = dspTotal;
+
+                    cpuTotal += cpu_exec_current;
+                    gpuTotal += gpu_exec_current;
+                    dspTotal += dsp_exec_current;
+
+                    String processorNow = "";
+
+
+                    //batchLoadedInceptionV2Cpu[batchSize] = true;
+
+//                    if ( cpuTotal <= gpuTotal && cpuTotal <= dspTotal) {
+//                        processorNow = processorNow.concat("CPU");
+//                        cpu_exec_current+=cpuTotalCopy;
+//                        System.out.println("Execution time = " + cpuTotal);
+//
+//
+//                        //loadModel("inception_v2",processorNow);
+//
+//                        batchLoadedInceptionV2Cpu[batchSize] = true;
+//                    }
+//
+//                    else if ( gpuTotal <= cpuTotal && gpuTotal <= dspTotal ) {
+//                        processorNow = processorNow.concat("GPU");
+//                        gpu_exec_current+=gpuTotalCopy;
+//
+//                        //loadModel("inception_v2",processorNow);
+//                        batchLoadedInceptionV2Gpu[batchSize] = true;
+//                    }
+//
+//                    else {
+//                        processorNow = processorNow.concat("DSP");
+//                        dsp_exec_current+=dspTotalCopy;
+//
+//                        //loadModel("inception_v2",processorNow);
+//                        batchLoadedInceptionV2Dsp[batchSize] = true;
+//                    }
+
+
+                    System.out.println("Timing = " + i + " CPU total = " + cpuTotal + " Gpu total = " + gpuTotal);
+
+
+                    System.out.println("Timing = " + i + " Model = " + inception_v2_queue_element + " Batch = " + batchSize + "Arrival = " + modelArrival + "Processor = " + processorNow + " Execs times = " + cpu_exec_current + " " + gpu_exec_current + " " + dsp_exec_current);
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        writeToFile(toWrite+"\n",getContext(),"inceptionV1.txt");
+                    }
+
+                }
+
+
+                if (!inception_v3_queue_element.equals("no") && !inception_v3_queue_element.equals("")) {
+
+                    //inception_v1_queue.add("no");
+
+
+                    int temp_wait_time = queueSize;
+
+                    int first_arrival_latest2 = (i-queueSize);
+
+                    System.out.println("iModel = " + inception_v3_queue_element + " Arrival_time = "+ first_arrival_latest2 + " Wait_time " + (temp_wait_time));
+
+
+                    System.out.println("Queue element \t " + inception_v3_queue_element);
+
+                    int batchSize = 1;
+
+                    //Finding other instances in the queue which came in the wait time
+
+                    while (inception_v3_queue.contains(inception_v3_queue_element)) {
+                        int indexElement = inception_v3_queue.indexOf(inception_v3_queue_element);
+                        inception_v3_queue.remove(inception_v3_queue_element);
+
+                        System.out.println("iModel = " + inception_v3_queue_element + " Arrival_time = "+ (first_arrival_latest2 + indexElement + batchSize) + " Wait_time " + (temp_wait_time - indexElement-1));
+
+
+                        inception_v3_queue.add("no");
+
+                        batchSize += 1;
+                    }
+
+                    String toWrite = "Timing = " + String.valueOf(i) + " Model = " + inception_v3_queue_element + " Batch = " + String.valueOf(batchSize) + "  " + j + " Queue size = " + inception_v3_queue.size();
+
+
+
+                    int modelArrival = arrivals.remove(0);
+
+                    int cpuTotal = (int)(batch_execs_cpu_inception_v3[batchSize-1]/1000);
+
+                    int gpuTotal = (int)(batch_execs_gpu_inception_v3[batchSize-1]/1000);
+
+                    int dspTotal = (int)(batch_execs_dsp_inception_v3[batchSize-1]/1000);
+
+                    if ( !isLoadedInceptionV3[0] ) {
+                        cpuTotal+=inception_v3_load_times[0];
+                        //isLoadedInception[0] = true;
+                    }
+                    if ( !isLoadedInceptionV3[1] ) {
+                        gpuTotal+=inception_v3_load_times[1];
+                        //isLoadedInception[0] = true;
+                    }
+
+                    if ( !isLoadedInceptionV3[2] ) {
+                        dspTotal+=inception_v3_load_times[2];
+                        //isLoadedInception[0] = true;
+                    }
+
+                    int cpuTotalCopy = cpuTotal;
+                    int gpuTotalCopy = gpuTotal;
+                    int dspTotalCopy = dspTotal;
+
+                    cpuTotal += cpu_exec_current;
+                    gpuTotal += gpu_exec_current;
+                    dspTotal += dsp_exec_current;
+
+                    String processorNow = "";
+
+                    if ( cpuTotal <= gpuTotal && cpuTotal <= dspTotal) { //Execute on CPU
+                        processorNow = processorNow.concat("CPU");
+                        cpu_exec_current+=cpuTotalCopy;
+                        System.out.println("iModel = " + inception_v3_queue_element +" Batch size = " + batchSize + " Arrival_time = "+ first_arrival_latest2 + " Wait_time " + (temp_wait_time-1) +" Execution time = " + cpu_exec_current + " Processor = " + processorNow );
+
+
+                        //loadModel("inception_v3",processorNow);
+                        isLoadedInceptionV3[0] = true;
+//                        backgroundHandler.post(periodicClassifyForThreadInceptionV3Cpu);
+
+                    }
+
+                    else if ( gpuTotal <= cpuTotal && gpuTotal <= dspTotal ) { //Execute on GPU
+                        processorNow = processorNow.concat("GPU");
+                        gpu_exec_current+=gpuTotalCopy;
+
+                        System.out.println("iModel = " + inception_v3_queue_element +" Batch size = " + batchSize + " Arrival_time = "+ first_arrival_latest2 + " Wait_time " + (temp_wait_time-1) +" Execution time = " + gpu_exec_current + " Processor = " + processorNow );
+
+
+                        //loadModel("inception_v3",processorNow);
+
+                        isLoadedInceptionV3[1] = true;
+
+//                        backgroundHandler2.post(periodicClassifyForThreadInceptionV3Gpu);
+
+                    }
+
+                    else { //Execute on DSP
+                        processorNow = processorNow.concat("DSP");
+                        dsp_exec_current+=dspTotalCopy;
+
+                        System.out.println("iModel = " + inception_v3_queue_element + " Batch size = " + batchSize + " Arrival_time = "+ first_arrival_latest2 + " Wait_time " + (temp_wait_time-1) +" Execution time = " + dsp_exec_current + " Processor = " + processorNow );
+
+
+                        //loadModel("inception_v3",processorNow);
+
+                        isLoadedInceptionV3[2]  = true;
+
+//                        backgroundHandler3.post(periodicClassifyForThreadinceptionV3Dsp);
+
+                    }
+
+
+                    System.out.println("Timing = " + i + " CPU total = " + cpuTotal + " Gpu total = " + gpuTotal);
+
+
+                    System.out.println("Timing = " + i + " Model = " + inception_v3_queue_element + " Batch = " + batchSize + "Arrival = " + modelArrival + "Processor = " + processorNow + " Execs times = " + cpu_exec_current + " " + gpu_exec_current + " " + dsp_exec_current);
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        writeToFile(toWrite+"\n",getContext(),"inceptionV3.txt");
+                    }
+
+                }
+
+                if (!mobilenet_queue_element.equals("no") && !mobilenet_queue_element.equals("")) {
+
+
+                    int temp_wait_time = queueSize;
+
+                    int first_arrival_latest3 = (i-queueSize);
+
+//                    System.out.println("Model = " + mobilenet_queue_element + " Arrival_time = "+ first_arrival_latest3 + " Wait_time " + (temp_wait_time-1));
+
+                    System.out.println("iModel = " + mobilenet_queue_element + " Arrival_time = "+ first_arrival_latest3 + " Wait_time " + (temp_wait_time));
+
+                    //inception_v1_queue.add("no");
+
+                    System.out.println("Queue element \t " + mobilenet_queue_element);
+
+                    int batchSize = 1;
+
+                    while (mobilenet_v1_queue.contains(mobilenet_queue_element)) { //Finding other instances in the wait time
+
+                        int indexElement = mobilenet_v1_queue.indexOf(mobilenet_queue_element);
+
+                        mobilenet_v1_queue.remove(mobilenet_queue_element);
+                        System.out.println("iModel = " + mobilenet_queue_element + " Arrival_time = "+ (first_arrival_latest3 + indexElement + batchSize) + " Wait_time " + (temp_wait_time - indexElement-1));
+
+                        mobilenet_v1_queue.add("no");
+                        batchSize += 1;
+                    }
+
+                    int modelArrival = arrivals.remove(0);
+
+                    int cpuTotal = (int)(batch_execs_cpu_mobilenet_v1[batchSize-1]/1000);
+
+                    int gpuTotal = (int)(batch_execs_gpu_mobilenet_v1[batchSize-1]/1000);
+
+                    int dspTotal = (int)(batch_execs_dsp_mobilenet_v1[batchSize-1]/1000);
+
+
+                    if ( !isLoadedMobileNet[0]  ) {
+                        cpuTotal+=mobilenet_v1_load_times[0];
+                        //isLoadedInception[0] = true;
+                    }
+                    if ( !isLoadedMobileNet[1]  ) {
+                        gpuTotal+=mobilenet_v1_load_times[1];
+                        //isLoadedInception[0] = true;
+                    }
+
+                    if ( !isLoadedMobileNet[2]  ) {
+                        dspTotal+=mobilenet_v1_load_times[2];
+                        //isLoadedInception[0] = true;
+                    }
+
+
+                    int cpuTotalCopy = cpuTotal;
+                    int gpuTotalCopy = gpuTotal;
+                    int dspTotalCopy = dspTotal;
+
+
+                    cpuTotal += cpu_exec_current;
+                    gpuTotal += gpu_exec_current;
+                    gpuTotal += dsp_exec_current;
+
+
+                    String processorNow = "";
+
+
+
+                    if ( cpuTotal <= gpuTotal && cpuTotal <= dspTotal ) { //Execute on CPU
+                        processorNow = processorNow.concat("CPU");
+                        cpu_exec_current+=cpuTotalCopy;
+                        System.out.println("iModel = " + mobilenet_queue_element + " Batch size = " + batchSize + " Arrival_time = "+ first_arrival_latest3 + " Wait_time " + (temp_wait_time-1) +" Execution time = " + cpu_exec_current + " Processor = " + processorNow);
+
+                        isLoadedMobileNet[0]  = true;
+//                        backgroundHandler.post(periodicClassifyForThreadMobilenetV1Cpu);
+
+                    }
+
+                    else if ( gpuTotal <= cpuTotal && gpuTotal <= dspTotal ){ //Execute on GPU
+                        processorNow = processorNow.concat("GPU");
+                        gpu_exec_current+=gpuTotalCopy;
+                        System.out.println("iModel = " + mobilenet_queue_element + " Batch size = " + batchSize + " Arrival_time = "+ first_arrival_latest3 + " Wait_time " + (temp_wait_time-1) +" Execution time = " + gpu_exec_current + " Processor = " + processorNow );
+
+                        isLoadedMobileNet[1] = true;
+//                        backgroundHandler2.post(periodicClassifyForThreadMobilenetV1Gpu);
+
+                    }
+                    else { //Execute on DSP
+                        processorNow = processorNow.concat("DSP");
+                        dsp_exec_current+=dspTotalCopy;
+                        System.out.println("iModel = " + mobilenet_queue_element + " Batch size = " + batchSize + " Arrival_time = "+ first_arrival_latest3 + " Wait_time " + (temp_wait_time-1) +" Execution time = " + dsp_exec_current + " Processor = " + processorNow);
+
+
+                        //loadModel("mobilenet_v1",processorNow);
+
+                        isLoadedMobileNet[2] = true;
+//                        backgroundHandler3.post(periodicClassifyForThreadMobilenetV1Dsp);
+
+
+                    }
+
+                    System.out.println("Timing = " + i + "CPU total = " + cpuTotal + " Gpu total = " + gpuTotal);
+
+
+                    String toWrite = "Timing = " + String.valueOf(i) + " Model = " + mobilenet_queue_element + " Batch = " + String.valueOf(batchSize) + "  " + j + " Queue size = " + mobilenet_v1_queue.size();
+
+                    System.out.println("Timing = " + i + " Model = " + mobilenet_queue_element + " Batch = " + batchSize + "Arrival = " + modelArrival+ " Processor = " + processorNow + " Execs times = " + cpu_exec_current + " " + gpu_exec_current + " " + dsp_exec_current);
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        writeToFile(toWrite+"\n",getContext(),"mobilenetQueue.txt");
+                    }
+
+                }
+
+                if (!mobilenet_v2_queue_element.equals("no") && !mobilenet_v2_queue_element.equals("")) {
+
+                    //inception_v1_queue.add("no");
+
+                    int temp_wait_time = queueSize;
+
+                    int first_arrival_latest4 = (i-queueSize);
+
+//                    System.out.println("Model = " + mobilenet_v2_queue_element + " Arrival_time = "+ first_arrival_latest4 + " Wait_time " + (temp_wait_time-1));
+
+                    System.out.println("iModel = " + mobilenet_v2_queue_element + " Arrival_time = "+ first_arrival_latest4 + " Wait_time " + (temp_wait_time));
+
+                    System.out.println("Queue element \t " + mobilenet_v2_queue_element);
+
+                    int batchSize = 1;
+
+                    while (mobilenet_v2_queue.contains(mobilenet_v2_queue_element)) {
+
+                        int indexElement = mobilenet_v2_queue.indexOf(mobilenet_v2_queue_element);
+                        mobilenet_v2_queue.remove(mobilenet_v2_queue_element);
+                        System.out.println("iModel = " + mobilenet_v2_queue_element + " Arrival_time = "+ (first_arrival_latest4 + indexElement + batchSize) + " Wait_time " + (temp_wait_time - indexElement-1));
+
+
+                        mobilenet_v2_queue.add("no");
+                        batchSize += 1;
+                    }
+
+                    runClassifier2 = true;
+
+                    int modelArrival = arrivals.remove(0);
+
+                    int cpuTotal = (int)(batch_execs_cpu_mobilenet_v2[batchSize-1]/1000);
+
+                    int gpuTotal = (int)(batch_execs_gpu_mobilenet_v2[batchSize-1]/1000);
+
+                    int dspTotal = (int)(batch_execs_dsp_mobilenet_v2[batchSize-1]/1000);
+
+                    if ( !isLoadedMobileNetV2[0] ) {
+                        cpuTotal+=mobilenet_v2_load_times[0];
+                        //isLoadedInception[0] = true;
+                    }
+                    if ( !isLoadedMobileNetV2[1] ) {
+                        gpuTotal+=mobilenet_v2_load_times[1];
+                        //isLoadedInception[0] = true;
+                    }
+                    if ( !isLoadedMobileNetV2[2] ) {
+                        dspTotal+=mobilenet_v2_load_times[2];
+                        //isLoadedInception[0] = true;
+                    }
+
+
+                    int cpuTotalCopy = cpuTotal;
+                    int gpuTotalCopy = gpuTotal;
+                    int dspTotalCopy = dspTotal;
+
+
+                    cpuTotal += cpu_exec_current;
+                    gpuTotal += gpu_exec_current;
+                    dspTotal += gpu_exec_current;
+
+
+                    String processorNow = "";
+
+
+
+
+                    if ( cpuTotal <= gpuTotal && cpuTotal <= dspTotal ) {
+                        processorNow = processorNow.concat("CPU");
+
+                        cpu_exec_current+=cpuTotalCopy;
+                        System.out.println("iModel = " + mobilenet_v2_queue_element + " Batch size = " + batchSize + " Arrival_time = "+ first_arrival_latest4 + " Wait_time " + (temp_wait_time-1) + " Execution time = " + cpu_exec_current + " Processor = " + processorNow );
+
+
+                        //loadModel("mobilenet_v2",processorNow);
+                        isLoadedMobileNetV2[0] = true;
+
+//                        backgroundHandler.post(periodicClassifyForThreadMobilenetV2Cpu);
+
+                    }
+
+                    else if ( gpuTotal <= cpuTotal && gpuTotal <= dspTotal ) {
+                        processorNow = processorNow.concat("GPU");
+                        gpu_exec_current+=gpuTotalCopy;
+                        System.out.println("iModel = " + mobilenet_v2_queue_element + " Batch size = " + batchSize + " Arrival_time = "+ first_arrival_latest4 + " Wait_time " + (temp_wait_time-1)+ " Execution time = " + gpu_exec_current + " Processor = " + processorNow );
+
+
+                        //loadModel("mobilenet_v2",processorNow);
+
+                        isLoadedMobileNetV2[1] = true;
+
+//                        backgroundHandler2.post(periodicClassifyForThreadMobilenetV2Gpu);
+
+
+                    }
+                    else {
+                        processorNow = processorNow.concat("DSP");
+                        dsp_exec_current+=dspTotalCopy;
+
+                        //loadModel("mobilenet_v2",processorNow);
+                        System.out.println("iModel = " + mobilenet_v2_queue_element + " Batch size = " + batchSize + " Arrival_time = "+ first_arrival_latest4 + " Wait_time " + (temp_wait_time-1) + " Execution time = " + dsp_exec_current + " Processor = " + processorNow );
+
+
+                        isLoadedMobileNetV2[2] = true;
+//                        backgroundHandler3.post(periodicClassifyForThreadMobilenetV2Dsp);
+
+                    }
+
+                    System.out.println("Timing = " + i + "CPU total = " + cpuTotal + " Gpu total = " + gpuTotal);
+
+
+                    String toWrite = "Timing = " + String.valueOf(i) + " Model = " + mobilenet_v2_queue_element + " Batch = " + String.valueOf(batchSize) + "  " + j + " Queue size = " + mobilenet_v2_queue.size();
+
+                    System.out.println("Timing = " + i + " Model = " + mobilenet_v2_queue_element + " Batch = " + batchSize + " Processor = " + processorNow );
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        writeToFile(toWrite+"\n",getContext(),"mobilenetV2Queue.txt");
+                    }
+
+
+                }
+
+
+
+                if (j < models.length) {
+
+                    System.out.println("reached here " + j + "  " + i);
+
+
+                    if (timings[j] == i) {
+                        while ( timings[j] == i) {
+
+                            if ( models[j].equals("inception_v1")) {
+                                if ( !inception_v1_queue.contains(models[j])) {
+                                    arrivals.add(j);
+                                }
+
+                                inception_v1_queue.add(models[j]);
+
+                                if( mobilenet_v1_queue.size() < queueSize)
+                                    mobilenet_v1_queue.add("no");
+
+                                if( mobilenet_v2_queue.size() < queueSize)
+                                    mobilenet_v2_queue.add("no");
+
+                                if( inception_v3_queue.size() < queueSize)
+                                    inception_v3_queue.add("no");
+
+                                if( inception_v2_queue.size() < queueSize)
+                                    inception_v2_queue.add("no");
+
+                            }
+
+                            else if ( models[j].equals("inception_v2")) {
+
+
+                                if ( !inception_v2_queue.contains(models[j])) {
+                                    arrivals.add(j);
+                                }
+
+                                inception_v2_queue.add(models[j]);
+
+                                if( mobilenet_v1_queue.size() < queueSize)
+                                    mobilenet_v1_queue.add("no");
+
+                                if( mobilenet_v2_queue.size() < queueSize)
+                                    mobilenet_v2_queue.add("no");
+
+                                if( inception_v3_queue.size() < queueSize)
+                                    inception_v3_queue.add("no");
+
+                                if( inception_v1_queue.size() < queueSize)
+                                    inception_v1_queue.add("no");
+
+
+                            }
+
+                            else if ( models[j].equals("mobilenet_v1")) {
+
+                                if ( !mobilenet_v1_queue.contains(models[j])) {
+                                    arrivals.add(j);
+                                    mobilenet_v1_queue.add(models[j]);
+                                }
+                                else {
+                                    mobilenet_v1_queue.add(models[j]);
+                                }
+
+
+                                //+";;"+cpu_execs[j] + ";;" + gpu_execs[j]
+                                if ( inception_v1_queue.size() < queueSize )
+                                    inception_v1_queue.add("no");
+
+                                if( mobilenet_v2_queue.size() < queueSize)
+                                    mobilenet_v2_queue.add("no");
+
+                                if( inception_v3_queue.size() < queueSize)
+                                    inception_v3_queue.add("no");
+                                if( inception_v2_queue.size() < queueSize)
+                                    inception_v2_queue.add("no");
+                            }
+
+                            else if ( models[j].equals("mobilenet_v2")) {
+
+                                if ( !mobilenet_v2_queue.contains(models[j])) {
+                                    arrivals.add(j);
+                                    mobilenet_v2_queue.add(models[j]);
+                                }
+                                else {
+                                    mobilenet_v2_queue.add(models[j]);
+                                }
+
+
+                                //+";;"+cpu_execs[j] + ";;" + gpu_execs[j]
+                                if ( inception_v1_queue.size() < queueSize )
+                                    inception_v1_queue.add("no");
+
+                                if( mobilenet_v1_queue.size() < queueSize)
+                                    mobilenet_v1_queue.add("no");
+
+                                if( inception_v3_queue.size() < queueSize)
+                                    inception_v3_queue.add("no");
+                                if( inception_v2_queue.size() < queueSize)
+                                    inception_v2_queue.add("no");
+                            }
+
+                            else if ( models[j].equals("inception_v3")) {
+
+                                if ( !inception_v3_queue.contains(models[j])) {
+                                    arrivals.add(j);
+                                    inception_v3_queue.add(models[j]);
+                                }
+                                else {
+                                    inception_v3_queue.add(models[j]);
+                                }
+
+
+                                //+";;"+cpu_execs[j] + ";;" + gpu_execs[j]
+                                if ( inception_v1_queue.size() < queueSize )
+                                    inception_v1_queue.add("no");
+
+                                if( mobilenet_v1_queue.size() < queueSize)
+                                    mobilenet_v1_queue.add("no");
+
+                                if( mobilenet_v2_queue.size() < queueSize)
+                                    mobilenet_v2_queue.add("no");
+
+                                if( inception_v2_queue.size() < queueSize)
+                                    inception_v2_queue.add("no");
+                            }
+
+                            System.out.println("Exec " + models[j] + " " + i);
+
+                            j += 1;
+                            if ( j == models.length ){
+                                break;
+                            }
+
+                        }
+
+                        continue;
+
+                    }
+
+                    inception_v1_queue.add("no");
+                    mobilenet_v1_queue.add("no");
+                    mobilenet_v2_queue.add("no");
+                    inception_v3_queue.add("no");
+                    inception_v2_queue.add("no");
+
+
+                }
+
+            }
+
+
+            int [] batch_execs_cpu_inception_v1 = new int[]{30886,35402,55537,70560,80590,490809,529548,698705,714818,830517};
+            int [] batch_execs_cpu_inception_v3 = new int[] {70897,115705,150708,200012,270999,1154838,1641064,1579348,1934691,2814480};
+            int [] batch_execs_cpu_mobilenet_v1 = new int[] {7458,10335,15468,21255,22833,225876,260722,284881,384387,465750};
+            int [] batch_execs_cpu_mobilenet_v2 = new int[] {50545,64638,85618,111252,140943,398295,475733,490799,442993,563887};
+
+            int [] batch_execs_gpu_inception_v1 = new int[]{29724,53484,64921,  76363,  90385,  114555, 133657, 153274, 172524, 190385};
+            int [] batch_execs_gpu_inception_v3 = new int[] {37798, 52484, 62462, 63798, 75431, 95127, 478727, 549210, 616380, 686648};
+            int [] batch_execs_gpu_mobilenet_v1 = new int[] {10199,  12172,  14627,  16135,  17110,  39800,  46295,  52916,  59414,  66000};
+            int [] batch_execs_gpu_mobilenet_v2 = new int[] {24712,  35349,  46883,  52114,  60264,  34148,  39791,  45624,  51099,  56535};
+
+            int [] batch_execs_dsp_inception_v1 = new int[]{5302,   8676,  11851,  14853,  17073,  41906,  48824,  55950,  62274,  69675};
+            int [] batch_execs_dsp_inception_v3 = new int[] {11170968,11127043,11171067,11230627,11300122,104742,120341,135057,150335,165684};
+            int [] batch_execs_dsp_mobilenet_v1 = new int[] {2991,1114026,1120159,1124359,1133427,1112559,11114644,16609,18355,20203};
+            int [] batch_execs_dsp_mobilenet_v2 = new int[] {1155111,  11192374,   111133916,  111166095,  111220943,  17884,  20311,  22666,  24897,  27032};

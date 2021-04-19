@@ -48,7 +48,7 @@ public class ImageClassifierQuantizedMobileNet extends ImageClassifier {
     // you can download this file from
     // see build.gradle for where to obtain this file. It should be auto
     // downloaded into assets.
-    return "mobilenet_v1_1.0_224_quant.tflite";
+    return "mobilenet_v1_0.25_224_quant.tflite";
   }
 
   @Override
@@ -116,6 +116,11 @@ public class ImageClassifierQuantizedMobileNet extends ImageClassifier {
     int[] timings2 = new int[] {tentative,224,224,3};
 
     tflite.resizeInput(0,timings2);
+
+    for ( int dim : dims ){
+      System.out.println("Dimension " + dim + getModelPath());
+    }
+
 
     long endModel = SystemClock.uptimeMillis();
 

@@ -43,6 +43,7 @@ public class ImageClassifierFloatMobileNetV2 extends ImageClassifier {
      */
     ImageClassifierFloatMobileNetV2(Activity activity) throws IOException {
         super(activity);
+        labelProbArray = new float[1][getNumLabels()];
     }
 
     @Override
@@ -50,12 +51,12 @@ public class ImageClassifierFloatMobileNetV2 extends ImageClassifier {
         // you can download this file from
         // see build.gradle for where to obtain this file. It should be auto
         // downloaded into assets.
-        return "mobilenet_v2_1.0_224.tflite";
+        return "squeezenet.tflite";
     }
 
     @Override
     protected String getLabelPath() {
-        return "labels.txt";
+        return "labels_nas.txt";
     }
 
     @Override
@@ -121,8 +122,12 @@ public class ImageClassifierFloatMobileNetV2 extends ImageClassifier {
         long endModel = SystemClock.uptimeMillis();
 
         System.out.println("Resize time " + (endModel-startModel));
-        if (labelProbArray == null)
-            labelProbArray = new float[tentative][getNumLabels()];
+
+        for ( int dim : dims ){
+            System.out.println("Dimension " + dim + getModelPath());
+        }
+
+
 
 
         tflite.run(imgData, labelProbArray);

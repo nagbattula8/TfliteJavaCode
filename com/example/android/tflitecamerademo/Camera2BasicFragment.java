@@ -18,6 +18,7 @@ limitations under the License.
 
 package com.example.android.tflitecamerademo;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
@@ -54,6 +55,8 @@ import android.os.HardwarePropertiesManager;
 import android.os.Process;
 import android.os.SystemClock;
 import android.support.annotation.NonNull;
+import android.support.v13.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.text.SpannableString;
 import android.text.SpannableStringBuilder;
 import android.text.TextUtils;
@@ -256,7 +259,7 @@ public class Camera2BasicFragment extends Fragment
 
     int currentModel = -1;
 
-    int currentNumThreads = -1;
+    int currentNumThreads = 4;
 
 
     Long thread1[] = new Long[15];
@@ -464,7 +467,7 @@ public class Camera2BasicFragment extends Fragment
                     inceptionV1Dsp = new ImageClassifierInceptionV1Quant(getActivity());
                     inceptionV1Dsp.setNumThreads(currentNumThreads);
 
-                    inceptionV1Dsp.useNNAPI();
+                    inceptionV1Dsp.useDSP();
                 } catch (Exception e) {
 
                 }
@@ -516,7 +519,7 @@ public class Camera2BasicFragment extends Fragment
                     inceptionV2Dsp = new ImageClassifierInceptionV2Quant(getActivity());
                     inceptionV2Dsp.setNumThreads(currentNumThreads);
 
-                    inceptionV2Dsp.useNNAPI();
+                    inceptionV2Dsp.useDSP();
                 } catch (Exception e) {
 
                 }
@@ -567,7 +570,7 @@ public class Camera2BasicFragment extends Fragment
                     inceptionV3Dsp = new ImageClassifierFloatInception(getActivity());
                     inceptionV3Dsp.setNumThreads(currentNumThreads);
 
-                    inceptionV3Dsp.useNNAPI();
+                    inceptionV3Dsp.useDSP();
                 } catch (Exception e) {
 
                 }
@@ -618,7 +621,7 @@ public class Camera2BasicFragment extends Fragment
                     mobilenetV1Dsp = new ImageClassifierQuantizedMobileNet(getActivity());
                     mobilenetV1Dsp.setNumThreads(currentNumThreads);
 
-                    mobilenetV1Dsp.useNNAPI();
+                    mobilenetV1Dsp.useDSP();
                 } catch (Exception e) {
 
                 }
@@ -669,7 +672,7 @@ public class Camera2BasicFragment extends Fragment
                     mobilenetV2Dsp = new ImageClassifierFloatMobileNetV2(getActivity());
                     mobilenetV2Dsp.setNumThreads(currentNumThreads);
 
-                    mobilenetV2Dsp.useNNAPI();
+                    mobilenetV2Dsp.useDSP();
                 } catch (Exception e) {
 
                 }
@@ -905,6 +908,28 @@ public class Camera2BasicFragment extends Fragment
         deviceView = (ListView) view.findViewById(R.id.device);
         modelView = (ListView) view.findViewById(R.id.model);
 
+        int permissionCheck = ContextCompat.checkSelfPermission(getActivity(),
+                Manifest.permission.READ_EXTERNAL_STORAGE);
+
+        if (ContextCompat.checkSelfPermission(getActivity(),
+                Manifest.permission.READ_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED) {
+
+
+            // OPCIONAL(explicaciones de poque pedimos los permisos)
+            if (ActivityCompat.shouldShowRequestPermissionRationale(getActivity(),
+                    Manifest.permission.READ_EXTERNAL_STORAGE)) {
+
+            } else {
+                //pedir permisos
+                ActivityCompat.requestPermissions(getActivity(),
+                        new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
+                        permissionCheck+1);
+            }
+        }
+
+        System.out.println("Permission check" + "  " + permissionCheck);
+
 
 
         startButton.setOnClickListener(new View.OnClickListener() {
@@ -935,6 +960,8 @@ public class Camera2BasicFragment extends Fragment
                     loadModel("mobilenet_v2","CPU");
                     loadModel("mobilenet_v2","GPU");
                     loadModel("mobilenet_v2","DSP");
+
+
 
                     mediaMetadataRetriever.setDataSource(uri);
 
@@ -1540,133 +1567,147 @@ public class Camera2BasicFragment extends Fragment
             int j = 0;
 
 
-            int[] timings = new int[]{0,
-                    14,
-                    33,
-                    129,
-                    155,
-                    170,
-                    194,
-                    224,
-                    227,
-                    248,
-                    252,
-                    256,
-                    268,
-                    302,
-                    315,
-                    334,
-                    362,
-                    384,
-                    405,
-                    435,
-                    464,
-                    478,
-                    487,
-                    508,
-                    522,
-                    536,
-                    705,
-                    735,
-                    740,
-                    751,
-                    758,
-                    791,
-                    863,
-                    864,
-                    869,
-                    888,
-                    900,
-                    908,
-                    914,
-                    932,
-                    954,
-                    975,
-                    1046,
-                    1054,
-                    1071,
-                    1080,
-                    1106,
-                    1124,
-                    1126,
-                    1130,
-                    1150,
-                    1151,
-                    1166,
-                    1171,
-                    1183,
-                    1198,
-                    1207,
-                    1221,
-                    1224,
-                    1229,
-                    1244,
-                    1274,
-                    1278,
-                    1354,
-                    1368,
-                    1369,
-                    1435,
-                    1435,
-                    1442,
-                    1533,
-                    1560,
-                    1580,
-                    1624,
-                    1699,
-                    1734,
-                    1780,
-                    1866,
-                    1870,
-                    1926,
-                    1983,
-                    1996,
-                    2015,
-                    2026,
-                    2032,
-                    2040,
-                    2042,
-                    2050,
-                    2078,
-                    2079,
-                    2096,
-                    2114,
-                    2138,
-                    2202,
-                    2206,
-                    2208,
-                    2209,
-                    2228,
-                    2233,
-                    2235,
-                    2253};
+//            int[] timings = new int[]{0,
+//                    14,
+//                    33,
+//                    129,
+//                    155,
+//                    170,
+//                    194,
+//                    224,
+//                    227,
+//                    248,
+//                    252,
+//                    256,
+//                    268,
+//                    302,
+//                    315,
+//                    334,
+//                    362,
+//                    384,
+//                    405,
+//                    435,
+//                    464,
+//                    478,
+//                    487,
+//                    508,
+//                    522,
+//                    536,
+//                    705,
+//                    735,
+//                    740,
+//                    751,
+//                    758,
+//                    791,
+//                    863,
+//                    864,
+//                    869,
+//                    888,
+//                    900,
+//                    908,
+//                    914,
+//                    932,
+//                    954,
+//                    975,
+//                    1046,
+//                    1054,
+//                    1071,
+//                    1080,
+//                    1106,
+//                    1124,
+//                    1126,
+//                    1130,
+//                    1150,
+//                    1151,
+//                    1166,
+//                    1171,
+//                    1183,
+//                    1198,
+//                    1207,
+//                    1221,
+//                    1224,
+//                    1229,
+//                    1244,
+//                    1274,
+//                    1278,
+//                    1354,
+//                    1368,
+//                    1369,
+//                    1435,
+//                    1435,
+//                    1442,
+//                    1533,
+//                    1560,
+//                    1580,
+//                    1624,
+//                    1699,
+//                    1734,
+//                    1780,
+//                    1866,
+//                    1870,
+//                    1926,
+//                    1983,
+//                    1996,
+//                    2015,
+//                    2026,
+//                    2032,
+//                    2040,
+//                    2042,
+//                    2050,
+//                    2078,
+//                    2079,
+//                    2096,
+//                    2114,
+//                    2138,
+//                    2202,
+//                    2206,
+//                    2208,
+//                    2209,
+//                    2228,
+//                    2233,
+//                    2235,
+//                    2253};
+//
+//
+//
+//            String[] models = new String[] {
+//
+//                    "inception_v3","mobilenet_v1","mobilenet_v2","inception_v3",
+//                    "mobilenet_v1","inception_v3","mobilenet_v1","inception_v3",
+//                    "inception_v1","inception_v3","inception_v3","inception_v3","inception_v1","inception_v1","mobilenet_v2","mobilenet_v2","mobilenet_v2","mobilenet_v1","inception_v3","mobilenet_v2","inception_v3","mobilenet_v1","inception_v3","inception_v3","inception_v1","mobilenet_v1","mobilenet_v2","mobilenet_v2","mobilenet_v1","inception_v3","inception_v1","mobilenet_v1","inception_v3","mobilenet_v1","inception_v3","inception_v1","inception_v1","mobilenet_v2","inception_v1","mobilenet_v1","mobilenet_v1","mobilenet_v1","inception_v1","inception_v3","inception_v3","inception_v3","inception_v3","mobilenet_v1","mobilenet_v2","mobilenet_v1","mobilenet_v1","mobilenet_v1","inception_v1","mobilenet_v2","inception_v1","mobilenet_v2","inception_v1","inception_v3","mobilenet_v1","inception_v3","mobilenet_v2","mobilenet_v2","inception_v1","inception_v3","inception_v1","inception_v1","mobilenet_v2","inception_v3","inception_v3","inception_v1","mobilenet_v1","inception_v3","mobilenet_v1","inception_v3","inception_v3","inception_v1","mobilenet_v2","inception_v1","mobilenet_v1","inception_v1","inception_v1","inception_v1","inception_v3","mobilenet_v2","mobilenet_v1","inception_v3","inception_v1","inception_v1","inception_v3","mobilenet_v1","mobilenet_v1","mobilenet_v2","inception_v3","inception_v1","mobilenet_v1","inception_v1","mobilenet_v2","inception_v3","inception_v3","mobilenet_v2"};
+//
 
 
+            int[] timings = new int[]{
+                    20,50,50,50,50,50,50,50,50,50,50,70,100,100,100,100,100,100,100,100,100,100,120,150,150,150,150,150,150,150,150,150,150,170,200,200,200,200,200,200,200,200,200,200,220,250,250,250,250,250,250,250,250,250,250,270,300,300,300,300,300,300,300,300,300,300,300,350,350,350,350,350,350,350,350,350,350,370,400,400,400,400,400,400,400,400,400,400,420,450,450,450,450,450,450,450,450,450,450};
 
-            String[] models = new String[] {
-
-                    "inception_v3","mobilenet_v1","mobilenet_v2","inception_v3",
-                    "mobilenet_v1","inception_v3","mobilenet_v1","inception_v3",
-                    "inception_v1","inception_v3","inception_v3","inception_v3","inception_v1","inception_v1","mobilenet_v2","mobilenet_v2","mobilenet_v2","mobilenet_v1","inception_v3","mobilenet_v2","inception_v3","mobilenet_v1","inception_v3","inception_v3","inception_v1","mobilenet_v1","mobilenet_v2","mobilenet_v2","mobilenet_v1","inception_v3","inception_v1","mobilenet_v1","inception_v3","mobilenet_v1","inception_v3","inception_v1","inception_v1","mobilenet_v2","inception_v1","mobilenet_v1","mobilenet_v1","mobilenet_v1","inception_v1","inception_v3","inception_v3","inception_v3","inception_v3","mobilenet_v1","mobilenet_v2","mobilenet_v1","mobilenet_v1","mobilenet_v1","inception_v1","mobilenet_v2","inception_v1","mobilenet_v2","inception_v1","inception_v3","mobilenet_v1","inception_v3","mobilenet_v2","mobilenet_v2","inception_v1","inception_v3","inception_v1","inception_v1","mobilenet_v2","inception_v3","inception_v3","inception_v1","mobilenet_v1","inception_v3","mobilenet_v1","inception_v3","inception_v3","inception_v1","mobilenet_v2","inception_v1","mobilenet_v1","inception_v1","inception_v1","inception_v1","inception_v3","mobilenet_v2","mobilenet_v1","inception_v3","inception_v1","inception_v1","inception_v3","mobilenet_v1","mobilenet_v1","mobilenet_v2","inception_v3","inception_v1","mobilenet_v1","inception_v1","mobilenet_v2","inception_v3","inception_v3","mobilenet_v2"};
-
+            String[] models = new String[] {"inception_v3","inception_v1","inception_v1","inception_v1","mobilenet_v1",
+                    "mobilenet_v1","mobilenet_v1","mobilenet_v1", "mobilenet_v2","mobilenet_v2",
+                    "mobilenet_v2","inception_v3","inception_v1","inception_v1","inception_v1",
+                    "mobilenet_v1","mobilenet_v1","mobilenet_v1","mobilenet_v1","mobilenet_v2",
+                    "mobilenet_v2","mobilenet_v2","inception_v3","inception_v1","inception_v1",
+                    "inception_v1","mobilenet_v1","mobilenet_v1","mobilenet_v1","mobilenet_v1",
+                    "mobilenet_v2","mobilenet_v2","mobilenet_v2","inception_v3","inception_v1",
+                    "inception_v1","inception_v1","mobilenet_v1","mobilenet_v1","mobilenet_v1",
+            "mobilenet_v1","mobilenet_v2","mobilenet_v2","mobilenet_v2","inception_v3","inception_v1","inception_v1","inception_v1","mobilenet_v1","mobilenet_v1","mobilenet_v1","mobilenet_v1","mobilenet_v2","mobilenet_v2","mobilenet_v2","inception_v3","inception_v1","inception_v1","inception_v1","mobilenet_v1","mobilenet_v1","mobilenet_v1","mobilenet_v1","mobilenet_v2","mobilenet_v2","mobilenet_v2","inception_v3","inception_v1","inception_v1","inception_v1","mobilenet_v1","mobilenet_v1","mobilenet_v1","mobilenet_v1","mobilenet_v2","mobilenet_v2","mobilenet_v2","inception_v3","inception_v1","inception_v1","inception_v1","mobilenet_v1","mobilenet_v1","mobilenet_v1","mobilenet_v1","mobilenet_v2","mobilenet_v2","mobilenet_v2","inception_v3","inception_v1","inception_v1","inception_v1","mobilenet_v1","mobilenet_v1","mobilenet_v1","mobilenet_v1","mobilenet_v2","mobilenet_v2","mobilenet_v2"};
 
             //Execution times of different batches
 
-            int [] batch_execs_cpu_inception_v1 = new int[]{31886,184402,286537,363560,435590,490809,529548,698705,714818,830517};
-            int [] batch_execs_cpu_inception_v3 = new int[] {47897,182705,287708,364012,1112999,1154838,1641064,1579348,1934691,2814480};
-            int [] batch_execs_cpu_mobilenet_v1 = new int[] {2458,18335,27468,36255,178833,225876,260722,284881,384387,465750};
-            int [] batch_execs_cpu_mobilenet_v2 = new int[] {11545,14638,21618,254252,249943,398295,475733,490799,442993,563887};
 
-            int [] batch_execs_gpu_inception_v1 = new int[]{29724,139673,216921,  76363,  95385,  114555, 133657, 153274, 172524, 190385};
-            int [] batch_execs_gpu_inception_v3 = new int[] {78798, 85484+30000, 134462, 271798, 341431, 410127, 478727, 549210, 616380, 686648};
-            int [] batch_execs_gpu_mobilenet_v1 = new int[] {5199,  19172,  28627,  39135,  33110,  39800,  46295,  52916,  59414,  66000};
-            int [] batch_execs_gpu_mobilenet_v2 = new int[] {11712,  7349,  7883,  22814,  28264,  34148,  39791,  45624,  51099,  56535};
+            int [] batch_execs_cpu_inception_v1 = new int[]{30886,35402,55537,70560,80590,490809,529548,698705,714818,830517};
+            int [] batch_execs_cpu_inception_v3 = new int[] {70897,127705,171708,231012,300999,1154838,1641064,1579348,1934691,2814480};
+            int [] batch_execs_cpu_mobilenet_v1 = new int[] {10458,16335,17468,23255,32833,225876,260722,284881,384387,465750};
+            int [] batch_execs_cpu_mobilenet_v2 = new int[] {53545,93638,130618,170252,220943,398295,475733,490799,442993,563887};
 
-            int [] batch_execs_dsp_inception_v1 = new int[]{11302,   336676,  514851,  27853,  35073,  41906,  48824,  55950,  62274,  69675};
-            int [] batch_execs_dsp_inception_v3 = new int[] {46968,410043,559067,666627,89122,104742,120341,135057,150335,165684};
-            int [] batch_execs_dsp_mobilenet_v1 = new int[] {2991,94026,110159,115359,11427,12559,14644,16609,18355,20203};
-            int [] batch_execs_dsp_mobilenet_v2 = new int[] {8111,  119237,   158916,  13095,  15420,  17884,  20311,  22666,  24897,  27032};
+            int [] batch_execs_gpu_inception_v1 = new int[]{29724,53484,64921,  76363,  90385,  114555, 133657, 153274, 172524, 190385};
+            int [] batch_execs_gpu_inception_v3 = new int[] {27798, 38484, 50462, 63798, 76431, 410127, 478727, 549210, 616380, 686648};
+            int [] batch_execs_gpu_mobilenet_v1 = new int[] {5199,  9172,  11627,  14135,  16110,  39800,  46295,  52916,  59414,  66000};
+            int [] batch_execs_gpu_mobilenet_v2 = new int[] {19712,  30349,  40883,  50814,  60264,  34148,  39791,  45624,  51099,  56535};
 
+            int [] batch_execs_dsp_inception_v1 = new int[]{11302,   17676,  24851,  31853,  40073,  41906,  48824,  55950,  62274,  69675};
+            int [] batch_execs_dsp_inception_v3 = new int[] {11170968,11127043,11171067,11230627,11300122,104742,120341,135057,150335,165684};
+            int [] batch_execs_dsp_mobilenet_v1 = new int[] {4991,1114026,1120159,1124359,1133427,1112559,11114644,16609,18355,20203};
+            int [] batch_execs_dsp_mobilenet_v2 = new int[] {1155111,  11192374,   111133916,  111166095,  111220943,  17884,  20311,  22666,  24897,  27032};
 
 
 
@@ -1714,7 +1755,7 @@ public class Camera2BasicFragment extends Fragment
 
             List<Integer> arrivals = new ArrayList<>();
 
-            int queueSize = 1; //Wait time before running a model's instance
+            int queueSize = 5; //Wait time before running a model's instance
 
             //Initializing queues related to models instances
 
@@ -1727,11 +1768,13 @@ public class Camera2BasicFragment extends Fragment
                 q.add("no");
             }
 
+            j = 0;
 
+            //baseline
 
             for ( int i = 0; i < timings[timings.length-1]+200; i++ ) {
 
-                TimeUnit.MILLISECONDS.sleep(1);
+               TimeUnit.MILLISECONDS.sleep(1);
 
                 //Printing current loads in the devices
 
@@ -1862,7 +1905,7 @@ public class Camera2BasicFragment extends Fragment
 
                         isLoadedInception[0] = true;
 
-//                        backgroundHandler.post(periodicClassifyForThreadInceptionV1Cpu); // Run model
+                        backgroundHandler.post(periodicClassifyForThreadInceptionV1Cpu); // Run model
 
                     }
 
@@ -1875,7 +1918,7 @@ public class Camera2BasicFragment extends Fragment
                         System.out.println("iModel = " + inception_queue_element + " Batch size = " + batchSize + " Arrival_time = "+ first_arrival_latest + " Wait_time " + (temp_wait_time-1) +" Execution time = " + gpu_exec_current + " Processor = " + processorNow );
 
                         isLoadedInception[1] = true;
-//                      backgroundHandler2.post(periodicClassifyForThreadinceptionV1Gpu);
+                      backgroundHandler2.post(periodicClassifyForThreadinceptionV1Gpu);
                     }
 //
                     //Execute on DSP
@@ -1885,7 +1928,7 @@ public class Camera2BasicFragment extends Fragment
 
                         System.out.println("iModel = " + inception_queue_element + " Batch size = " + batchSize + " Arrival_time = "+ first_arrival_latest + " Wait_time " + (temp_wait_time-1)+" Execution time = " + dsp_exec_current + " Processor = " + processorNow);
                         isLoadedInception[2] = true;
-//                      backgroundHandler3.post(periodicClassifyForThreadinceptionV1Dsp);
+                      backgroundHandler3.post(periodicClassifyForThreadinceptionV1Dsp);
                     }
 
 
@@ -1936,7 +1979,6 @@ public class Camera2BasicFragment extends Fragment
                         gpuTotal+=inception_v2_load_times[1];
                         //isLoadedInception[0] = true;
                     }
-
                     if ( !batchLoadedInceptionV2Dsp[batchSize] ) {
                         dspTotal+=inception_v2_load_times[2];
                         //isLoadedInception[0] = true;
@@ -2069,7 +2111,7 @@ public class Camera2BasicFragment extends Fragment
 
                         //loadModel("inception_v3",processorNow);
                         isLoadedInceptionV3[0] = true;
-//                        backgroundHandler.post(periodicClassifyForThreadInceptionV3Cpu);
+                        backgroundHandler.post(periodicClassifyForThreadInceptionV3Cpu);
 
                     }
 
@@ -2084,7 +2126,7 @@ public class Camera2BasicFragment extends Fragment
 
                         isLoadedInceptionV3[1] = true;
 
-//                        backgroundHandler2.post(periodicClassifyForThreadInceptionV3Gpu);
+                        backgroundHandler2.post(periodicClassifyForThreadInceptionV3Gpu);
 
                     }
 
@@ -2099,7 +2141,7 @@ public class Camera2BasicFragment extends Fragment
 
                         isLoadedInceptionV3[2]  = true;
 
-//                        backgroundHandler3.post(periodicClassifyForThreadinceptionV3Dsp);
+                        backgroundHandler3.post(periodicClassifyForThreadinceptionV3Dsp);
 
                     }
 
@@ -2187,7 +2229,7 @@ public class Camera2BasicFragment extends Fragment
                         System.out.println("iModel = " + mobilenet_queue_element + " Batch size = " + batchSize + " Arrival_time = "+ first_arrival_latest3 + " Wait_time " + (temp_wait_time-1) +" Execution time = " + cpu_exec_current + " Processor = " + processorNow);
 
                         isLoadedMobileNet[0]  = true;
-//                        backgroundHandler.post(periodicClassifyForThreadMobilenetV1Cpu);
+                        backgroundHandler.post(periodicClassifyForThreadMobilenetV1Cpu);
 
                     }
 
@@ -2209,7 +2251,7 @@ public class Camera2BasicFragment extends Fragment
                         //loadModel("mobilenet_v1",processorNow);
 
                         isLoadedMobileNet[2] = true;
-//                        backgroundHandler3.post(periodicClassifyForThreadMobilenetV1Dsp);
+                        backgroundHandler3.post(periodicClassifyForThreadMobilenetV1Dsp);
 
 
                     }
@@ -2303,7 +2345,7 @@ public class Camera2BasicFragment extends Fragment
                         //loadModel("mobilenet_v2",processorNow);
                         isLoadedMobileNetV2[0] = true;
 
-//                        backgroundHandler.post(periodicClassifyForThreadMobilenetV2Cpu);
+                        backgroundHandler.post(periodicClassifyForThreadMobilenetV2Cpu);
 
                     }
 
@@ -2317,7 +2359,7 @@ public class Camera2BasicFragment extends Fragment
 
                         isLoadedMobileNetV2[1] = true;
 
-//                        backgroundHandler2.post(periodicClassifyForThreadMobilenetV2Gpu);
+                        backgroundHandler2.post(periodicClassifyForThreadMobilenetV2Gpu);
 
 
                     }
@@ -2330,7 +2372,7 @@ public class Camera2BasicFragment extends Fragment
 
 
                         isLoadedMobileNetV2[2] = true;
-//                        backgroundHandler3.post(periodicClassifyForThreadMobilenetV2Dsp);
+                        backgroundHandler3.post(periodicClassifyForThreadMobilenetV2Dsp);
 
                     }
 
@@ -3467,7 +3509,7 @@ public class Camera2BasicFragment extends Fragment
                                     mobilenetV2Dsp = new ImageClassifierFloatMobileNetV2(getActivity());
                                     mobilenetV2Dsp.setNumThreads(currentNumThreads);
 
-                                    mobilenetV2Dsp.useNNAPI();
+                                    mobilenetV2Dsp.useDSP();
 
                                 }
 
@@ -3555,7 +3597,7 @@ public class Camera2BasicFragment extends Fragment
                                     inceptionV1Dsp = new ImageClassifierInceptionV1Quant(getActivity());
                                     inceptionV1Dsp.setNumThreads(currentNumThreads);
 
-                                    inceptionV1Dsp.useNNAPI();
+                                    inceptionV1Dsp.useDSP();
 
                                 }
 
@@ -3644,7 +3686,7 @@ public class Camera2BasicFragment extends Fragment
                                     inceptionV3Dsp = new ImageClassifierFloatInception(getActivity());
                                     inceptionV3Dsp.setNumThreads(currentNumThreads);
 
-                                    inceptionV3Dsp.useNNAPI();
+                                    inceptionV3Dsp.useDSP();
 
                                 }
 
@@ -3729,7 +3771,7 @@ public class Camera2BasicFragment extends Fragment
                                     mobilenetV1Cpu = new ImageClassifierFloatMobileNetV2(getActivity());
                                     mobilenetV1Cpu.setNumThreads(currentNumThreads);
 
-                                    mobilenetV1Cpu.useNNAPI();
+                                    mobilenetV1Cpu.useDSP();
 
                                 }
 
@@ -3817,7 +3859,7 @@ public class Camera2BasicFragment extends Fragment
                                     mobilenetV2Dsp = new ImageClassifierFloatMobileNetV2(getActivity());
                                     mobilenetV2Dsp.setNumThreads(currentNumThreads);
 
-                                    mobilenetV2Dsp.useNNAPI();
+                                    mobilenetV2Dsp.useDSP();
 
                                 }
 
@@ -4318,7 +4360,7 @@ public class Camera2BasicFragment extends Fragment
         }
 
 
-        if (classifierNow == null || getActivity() == null || cameraDevice == null) {
+        if (classifierNow == null || getActivity() == null) {
             // It"s important to not call showToast every frame, or else the app will starve and
             // hang. updateActiveModel() already puts an error message up with showToast.
             // showToast("Uninitialized Classifier or invalid context.");
@@ -4332,9 +4374,24 @@ public class Camera2BasicFragment extends Fragment
         }
         SpannableStringBuilder textToShow2 = new SpannableStringBuilder();
 
-        Bitmap bitmap2 = textureView.getBitmap(classifierNow.getImageSizeX(), classifierNow.getImageSizeY());
-        Long l2 = classifierNow.classifyFrame(bitmap2, textToShow2,thread_name);
-        bitmap2.recycle();
+
+        Bitmap bmFrame = mediaMetadataRetriever.getFrameAtTime(10000);
+
+
+        //Bitmap bitmap = textureView.getBitmap(classifier.getImageSizeX(), classifier.getImageSizeY());
+
+        Bitmap resizedBitmap = Bitmap.createScaledBitmap(
+                bmFrame, classifier.getImageSizeX(), classifier.getImageSizeY(), false);
+
+
+//        Bitmap bitmap2 = textureView.getBitmap(classifierNow.getImageSizeX(), classifierNow.getImageSizeY());
+
+
+
+
+
+        Long l2 = classifierNow.classifyFrame(resizedBitmap, textToShow2,thread_name);
+        resizedBitmap.recycle();
 
 
 
@@ -4420,4 +4477,3 @@ public class Camera2BasicFragment extends Fragment
         }
     }
 }
-

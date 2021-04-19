@@ -1,0 +1,144 @@
+            for ( int i = 0; i < timings[timings.length-1]+200; i++ ) {
+                if ( j == models.length ) {
+                    break;
+                }
+
+                if ( cpu_exec_current > 0 ) {
+                    cpu_exec_current-=1;
+                }
+                if ( gpu_exec_current > 0 ) {
+                    gpu_exec_current-=1;
+                }
+
+                if ( dsp_exec_current > 0 ) {
+                    dsp_exec_current-=1;
+                }
+
+
+                while( i == timings[j] ) {
+                    TimeUnit.MILLISECONDS.sleep(1);
+                    int cpuTotal;
+                    int gpuTotal;
+                    int dspTotal;
+
+//                    System.out.println(j + "  " + models[j]);
+
+
+
+
+                    if ( models[j].equals("inception_v1") ) {
+                        cpuTotal = cpu_exec_current + batch_execs_cpu_inception_v1[0]/1000;
+                        gpuTotal = gpu_exec_current + batch_execs_gpu_inception_v1[0]/1000;
+                        dspTotal = dsp_exec_current + batch_execs_dsp_inception_v1[0]/1000;
+
+
+                        if ( cpuTotal <= gpuTotal && cpuTotal <= dspTotal ) {
+                            cpu_exec_current=cpuTotal;
+
+                            System.out.println("Arrival = " + timings[j] + " Model = " + models[j] + " Device = CPU" + " Execution time " + cpu_exec_current + " " + j);
+                        }
+
+                        else if ( gpuTotal <= cpuTotal && gpuTotal <= dspTotal ) {
+                            gpu_exec_current=gpuTotal;
+
+                            System.out.println("Arrival = " + timings[j] + " Model = " + models[j] + " Device = GPU" + " Execution time " + gpu_exec_current + " " + j);
+                        }
+
+                        else if ( dspTotal <= cpuTotal && dspTotal <= gpuTotal ) {
+                            dsp_exec_current=dspTotal;
+
+                            System.out.println( "Arrival = " + timings[j] + " Model = " + models[j] + " Device = DSP" + " Execution time " + dsp_exec_current + " " + j);
+                        }
+
+
+                    }
+
+                    else if ( models[j].equals("inception_v3") ) {
+
+                        cpuTotal = cpu_exec_current + batch_execs_cpu_inception_v3[0]/1000;
+                        gpuTotal = gpu_exec_current + batch_execs_gpu_inception_v3[0]/1000;
+                        dspTotal = dsp_exec_current + batch_execs_dsp_inception_v3[0]/1000;
+
+                        if ( cpuTotal <= gpuTotal && cpuTotal <= dspTotal ) {
+                            cpu_exec_current=cpuTotal;
+
+                            System.out.println("Arrival = " + timings[j] + " Model = " + models[j] + " Device = CPU" + " Execution time " + cpu_exec_current + " " + j);
+                        }
+
+                        else if ( gpuTotal <= cpuTotal && gpuTotal <= dspTotal ) {
+                            gpu_exec_current=gpuTotal;
+
+                            System.out.println("Arrival = " + timings[j] + " Model = " + models[j] + " Device = GPU" + " Execution time " + gpu_exec_current + " " + j);
+                        }
+
+                        else if ( dspTotal <= cpuTotal && dspTotal <= gpuTotal ) {
+                            dsp_exec_current=dspTotal;
+
+                            System.out.println( "Arrival = " + timings[j] + " Model = " + models[j] + " Device = DSP" + " Execution time " + dsp_exec_current + " " + j );
+                        }
+
+
+                    }
+
+                    else if ( models[j].equals("mobilenet_v1") ) {
+                        System.out.println(i + "\t" + models[j] + "\t" + j);
+                        cpuTotal = cpu_exec_current + batch_execs_cpu_mobilenet_v1[0]/1000;
+                        gpuTotal = gpu_exec_current + batch_execs_gpu_mobilenet_v1[0]/1000;
+                        dspTotal = dsp_exec_current + batch_execs_dsp_mobilenet_v1[0]/1000;
+
+                        if ( cpuTotal <= gpuTotal && cpuTotal <= dspTotal ) {
+                            cpu_exec_current=cpuTotal;
+
+                            System.out.println("Arrival = " + timings[j] + " Model = " + models[j] + " Device = CPU" + " Execution time " + cpu_exec_current + " " + j );
+                        }
+
+                        else if ( gpuTotal <= cpuTotal && gpuTotal <= dspTotal ) {
+                            gpu_exec_current=gpuTotal;
+
+                            System.out.println("Arrival = " + timings[j] + " Model = " + models[j] + " Device = GPU" + " Execution time " + gpu_exec_current + " " + j );
+                        }
+
+                        else if ( dspTotal <= cpuTotal && dspTotal <= gpuTotal ) {
+                            dsp_exec_current=dspTotal;
+
+                            System.out.println( "Arrival = " + timings[j] + " Model = " + models[j] + " Device = DSP" + " Execution time " + dsp_exec_current + " " + j);
+                        }
+
+                    }
+
+                    else if ( models[j].equals("mobilenet_v2") ) {
+                        cpuTotal = cpu_exec_current + batch_execs_cpu_mobilenet_v2[0]/1000;
+                        gpuTotal = gpu_exec_current + batch_execs_gpu_mobilenet_v2[0]/1000;
+                        dspTotal = dsp_exec_current + batch_execs_dsp_mobilenet_v2[0]/1000;
+
+                        if ( cpuTotal <= gpuTotal && cpuTotal <= dspTotal ) {
+                            cpu_exec_current=cpuTotal;
+
+                            System.out.println("Arrival = " + timings[j] + " Model = " + models[j] + " Device = CPU" + " Execution time " + cpu_exec_current + " " + j);
+                        }
+
+                        else if ( gpuTotal <= cpuTotal && gpuTotal <= dspTotal ) {
+                            gpu_exec_current=gpuTotal;
+
+                            System.out.println("Arrival = " + timings[j] + " Model = " + models[j] + " Device = GPU" + " Execution time " + gpu_exec_current+ " " + j);
+                        }
+
+                        else if ( dspTotal <= cpuTotal && dspTotal <= gpuTotal ) {
+                            dsp_exec_current=dspTotal;
+
+                            System.out.println( "Arrival = " + timings[j] + " Model = " + models[j] + " Device = DSP" + " Execution time " + dsp_exec_current+ " " + j);
+                        }
+
+                    }
+
+                    j+=1;
+                    if (j == models.length ) {
+                        break;
+                    }
+
+
+
+
+                }
+
+            }

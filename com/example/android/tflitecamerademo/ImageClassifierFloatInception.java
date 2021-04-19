@@ -1,4 +1,4 @@
-/* Copyright 2017 The TensorFlow Authors. All Rights Reserved.
+/* Copyright 2018 The TensorFlow Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,59 +22,56 @@ import org.tensorflow.lite.Tensor;
 
 import java.io.IOException;
 
-/**
- * This classifier works with the Inception-v3 slim model.
- * It applies floating point inference rather than using a quantized model.
- */
+/** This classifier works with the float MobileNet model. */
 public class ImageClassifierFloatInception extends ImageClassifier {
 
-  /**
-   * The inception net requires additional normalization of the used input.
-   */
-  private static final int IMAGE_MEAN = 128;
-  private static final float IMAGE_STD = 128.0f;
+  /** The mobile net requires additional normalization of the used input. */
+  private static final float IMAGE_MEAN = 127.5f;
+
+  private static final float IMAGE_STD = 127.5f;
 
   /**
-   * An array to hold inference results, to be feed into Tensorflow Lite as outputs.
-   * This isn't part of the super class, because we need a primitive array here.
+   * An array to hold inference results, to be feed into Tensorflow Lite as outputs. This isn't part
+   * of the super class, because we need a primitive array here.
    */
   private float[][] labelProbArray = null;
 
   /**
-   * Initializes an {@code ImageClassifier}.
+   * Initializes an {@code ImageClassifierFloatMobileNet}.
    *
    * @param activity
    */
   ImageClassifierFloatInception(Activity activity) throws IOException {
     super(activity);
+    labelProbArray = new float[1][getNumLabels()];
   }
 
   @Override
   protected String getModelPath() {
     // you can download this file from
-    // https://storage.googleapis.com/download.tensorflow.org/models/tflite/inception_v3_slim_2016_android_2017_11_10.zip
-    return "inceptionv3_slim_2016.tflite";
+    // see build.gradle for where to obtain this file. It should be auto
+    // downloaded into assets.
+    return "nasnet_mobile.tflite";
   }
 
   @Override
   protected String getLabelPath() {
-    return "imagenet_labels.txt";
+    return "labels_nas.txt";
   }
 
   @Override
   protected int getImageSizeX() {
-    return 299;
+    return 224;
   }
 
   @Override
   protected int getImageSizeY() {
-    return 299;
+    return 224;
   }
 
   @Override
   protected int getNumBytesPerChannel() {
-    // a 32bit float value requires 4 bytes
-    return 4;
+    return 4; // Float.SIZE / Byte.SIZE;
   }
 
   @Override
@@ -96,8 +93,7 @@ public class ImageClassifierFloatInception extends ImageClassifier {
 
   @Override
   protected float getNormalizedProbability(int labelIndex) {
-    // TODO the following value isn't in [0,1] yet, but may be greater. Why?
-    return getProbability(labelIndex);
+    return labelProbArray[0][labelIndex];
   }
 
   @Override
@@ -119,7 +115,7 @@ public class ImageClassifierFloatInception extends ImageClassifier {
     long startModel = SystemClock.uptimeMillis();
 
 
-    int[] timings2 = new int[] {tentative,299,299,3};
+    int[] timings2 = new int[] {tentative,224,224,3};
 
     tflite.resizeInput(0,timings2);
 
@@ -127,8 +123,9 @@ public class ImageClassifierFloatInception extends ImageClassifier {
 
     System.out.println("Resize time " + (endModel-startModel));
 
-    if (labelProbArray == null)
-      labelProbArray = new float[tentative][getNumLabels()];
+    for ( int dim : dims ){
+      System.out.println("Dimension " + dim + getModelPath());
+    }
 
 
 
