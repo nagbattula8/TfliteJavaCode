@@ -50,7 +50,7 @@ public class ImageClassifierFloatMobileNet extends ImageClassifier {
     // you can download this file from
     // see build.gradle for where to obtain this file. It should be auto
     // downloaded into assets.
-    return "mobilenet_v1_1.0_224.tflite";
+    return "mobilenet_v1_0.25_224.tflite";
   }
 
   @Override
@@ -103,6 +103,10 @@ public class ImageClassifierFloatMobileNet extends ImageClassifier {
   @Override
   protected void runInference2(int tentative) {
 
+    if (labelProbArray == null)
+      labelProbArray = new float[tentative][getNumLabels()];
+
+
     Tensor t1 = tflite.getInputTensor(0);
 
     int[] dims = t1.shape();
@@ -122,8 +126,6 @@ public class ImageClassifierFloatMobileNet extends ImageClassifier {
 
     System.out.println("Resize time " + (endModel-startModel));
 
-    if (labelProbArray == null)
-      labelProbArray = new float[tentative][getNumLabels()];
 
 
 

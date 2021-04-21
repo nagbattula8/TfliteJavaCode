@@ -43,7 +43,6 @@ public class ImageClassifierFloatInception extends ImageClassifier {
    */
   ImageClassifierFloatInception(Activity activity) throws IOException {
     super(activity);
-    labelProbArray = new float[1][getNumLabels()];
   }
 
   @Override
@@ -103,6 +102,10 @@ public class ImageClassifierFloatInception extends ImageClassifier {
 
   @Override
   protected void runInference2(int tentative) {
+
+
+    if (labelProbArray == null)
+      labelProbArray = new float[tentative][getNumLabels()];
 
     Tensor t1 = tflite.getInputTensor(0);
 

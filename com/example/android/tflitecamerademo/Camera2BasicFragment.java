@@ -112,6 +112,9 @@ public class Camera2BasicFragment extends Fragment
 
     private static final int PERMISSIONS_REQUEST_CODE = 1;
 
+    int size_to_consider;
+
+
     private final Object lock = new Object();
     private boolean runClassifier = false;
     private boolean runClassifier2 = false;
@@ -588,7 +591,7 @@ public class Camera2BasicFragment extends Fragment
                 }
 
                 try {
-                    mobilenetV1Cpu = new ImageClassifierQuantizedMobileNet(getActivity());
+                    mobilenetV1Cpu = new ImageClassifierFloatMobileNet(getActivity());
                     mobilenetV1Cpu.setNumThreads(currentNumThreads);
                 } catch (Exception e) {
 
@@ -618,7 +621,7 @@ public class Camera2BasicFragment extends Fragment
                 }
 
                 try {
-                    mobilenetV1Dsp = new ImageClassifierQuantizedMobileNet(getActivity());
+                    mobilenetV1Dsp = new ImageClassifierFloatMobileNet(getActivity());
                     mobilenetV1Dsp.setNumThreads(currentNumThreads);
 
                     mobilenetV1Dsp.useDSP();
@@ -1307,74 +1310,9 @@ public class Camera2BasicFragment extends Fragment
         }
     }
 
-    private void startTimer(HandlerThread backgroundThread2){
-        mTimer1 = new Timer();
-        mTt1 = new TimerTask() {
-            public void run() {
-                mTimerHandler.post(new Runnable() {
-                    public void run(){
-                        //TODO
-                        Log.d("Thread 2","Started");
-
-                        if( backgroundThread2.isAlive() ) {
-
-                        } else {
-                            backgroundThread2.start();
-
-                        }
 
 
-                        Log.d("Thread 2 Priority", Integer.toString(backgroundThread2.getPriority()));
 
-                        backgroundHandler2 = new Handler(backgroundThread2.getLooper());
-                        synchronized (lock) {
-                            runClassifier2 = true;
-                        }
-                        backgroundHandler2.post(periodicClassify2);
-
-
-                    }
-                });
-            }
-        };
-
-        mTimer1.schedule(mTt1, 0);
-    }
-
-
-    private void startTimerForThread(HandlerThread backgroundThread2, String device){
-        mTimer1 = new Timer();
-        mTt1 = new TimerTask() {
-            public void run() {
-                mTimerHandler.post(new Runnable() {
-                    public void run(){
-                        //TODO
-                        Log.d("Thread 2","Started");
-
-                        if( backgroundThread2.isAlive() ) {
-
-                        } else {
-                            backgroundThread2.start();
-
-                        }
-
-
-                        Log.d("Thread 2 Priority", Integer.toString(backgroundThread2.getPriority()));
-
-                        backgroundHandler2 = new Handler(backgroundThread2.getLooper());
-                        synchronized (lock) {
-                            runClassifier2 = true;
-                        }
-                        backgroundHandler2.post(periodicClassifyForThread);
-
-
-                    }
-                });
-            }
-        };
-
-        mTimer1.schedule(mTt1, 0);
-    }
 
 
     private void startTimer2(HandlerThread backgroundThread3){
@@ -1443,35 +1381,7 @@ public class Camera2BasicFragment extends Fragment
     }
 
 
-    private void startTimerOne(HandlerThread backgroundThread){
-        mTimer4 = new Timer();
-        mTt4 = new TimerTask() {
-            public void run() {
-                mTimerHandler4.post(new Runnable() {
-                    public void run(){
-                        //TODO
-                        Log.d("Thread 1","Started");
 
-                        if( backgroundThread.isAlive() ) {
-
-                        } else {
-                            backgroundThread.start();
-
-                        }
-
-                        backgroundHandler = new Handler(backgroundThread.getLooper());
-                        synchronized (lock) {
-                            runClassifier = true;
-                        }
-                        backgroundHandler.post(periodicClassify);
-
-                    }
-                });
-            }
-        };
-
-        mTimer4.schedule(mTt4, 10);
-    }
 
 
     /** Starts a background thread and its {@link Handler}. */
@@ -1897,13 +1807,17 @@ public class Camera2BasicFragment extends Fragment
 
                     //Execute on CPU
 
+
+
                     if ( cpuTotal <= gpuTotal && cpuTotal <= dspTotal) {
                         processorNow = processorNow.concat("CPU");
 
                         cpu_exec_current+=cpuTotalCopy;
+                        size_to_consider = batchSize;
                         System.out.println("iModel = " + inception_queue_element + " Batch size = " + batchSize + " Arrival_time = "+ first_arrival_latest + " Wait_time " + (temp_wait_time-1) +" Execution time = " + cpu_exec_current + " Processor = " + processorNow);
 
                         isLoadedInception[0] = true;
+
 
                         backgroundHandler.post(periodicClassifyForThreadInceptionV1Cpu); // Run model
 
@@ -1914,11 +1828,11 @@ public class Camera2BasicFragment extends Fragment
                     else if ( gpuTotal <= cpuTotal && gpuTotal <= dspTotal ) {
                         processorNow = processorNow.concat("GPU");
                         gpu_exec_current+=gpuTotalCopy;
-
+                        size_to_consider = batchSize;
                         System.out.println("iModel = " + inception_queue_element + " Batch size = " + batchSize + " Arrival_time = "+ first_arrival_latest + " Wait_time " + (temp_wait_time-1) +" Execution time = " + gpu_exec_current + " Processor = " + processorNow );
 
                         isLoadedInception[1] = true;
-                      backgroundHandler2.post(periodicClassifyForThreadinceptionV1Gpu);
+                      backgroundHandler.post(periodicClassifyForThreadinceptionV1Gpu);
                     }
 //
                     //Execute on DSP
@@ -1928,7 +1842,8 @@ public class Camera2BasicFragment extends Fragment
 
                         System.out.println("iModel = " + inception_queue_element + " Batch size = " + batchSize + " Arrival_time = "+ first_arrival_latest + " Wait_time " + (temp_wait_time-1)+" Execution time = " + dsp_exec_current + " Processor = " + processorNow);
                         isLoadedInception[2] = true;
-                      backgroundHandler3.post(periodicClassifyForThreadinceptionV1Dsp);
+                        size_to_consider = batchSize;
+                      backgroundHandler.post(periodicClassifyForThreadinceptionV1Dsp);
                     }
 
 
@@ -2103,9 +2018,11 @@ public class Camera2BasicFragment extends Fragment
 
                     String processorNow = "";
 
+
                     if ( cpuTotal <= gpuTotal && cpuTotal <= dspTotal) { //Execute on CPU
                         processorNow = processorNow.concat("CPU");
                         cpu_exec_current+=cpuTotalCopy;
+                        size_to_consider = batchSize;
                         System.out.println("iModel = " + inception_v3_queue_element +" Batch size = " + batchSize + " Arrival_time = "+ first_arrival_latest2 + " Wait_time " + (temp_wait_time-1) +" Execution time = " + cpu_exec_current + " Processor = " + processorNow );
 
 
@@ -2118,6 +2035,7 @@ public class Camera2BasicFragment extends Fragment
                     else if ( gpuTotal <= cpuTotal && gpuTotal <= dspTotal ) { //Execute on GPU
                         processorNow = processorNow.concat("GPU");
                         gpu_exec_current+=gpuTotalCopy;
+                        size_to_consider = batchSize;
 
                         System.out.println("iModel = " + inception_v3_queue_element +" Batch size = " + batchSize + " Arrival_time = "+ first_arrival_latest2 + " Wait_time " + (temp_wait_time-1) +" Execution time = " + gpu_exec_current + " Processor = " + processorNow );
 
@@ -2126,14 +2044,14 @@ public class Camera2BasicFragment extends Fragment
 
                         isLoadedInceptionV3[1] = true;
 
-                        backgroundHandler2.post(periodicClassifyForThreadInceptionV3Gpu);
+                        backgroundHandler.post(periodicClassifyForThreadInceptionV3Gpu);
 
                     }
 
                     else { //Execute on DSP
                         processorNow = processorNow.concat("DSP");
                         dsp_exec_current+=dspTotalCopy;
-
+                        size_to_consider = batchSize;
                         System.out.println("iModel = " + inception_v3_queue_element + " Batch size = " + batchSize + " Arrival_time = "+ first_arrival_latest2 + " Wait_time " + (temp_wait_time-1) +" Execution time = " + dsp_exec_current + " Processor = " + processorNow );
 
 
@@ -2141,7 +2059,7 @@ public class Camera2BasicFragment extends Fragment
 
                         isLoadedInceptionV3[2]  = true;
 
-                        backgroundHandler3.post(periodicClassifyForThreadinceptionV3Dsp);
+                        backgroundHandler.post(periodicClassifyForThreadinceptionV3Dsp);
 
                     }
 
@@ -2222,10 +2140,10 @@ public class Camera2BasicFragment extends Fragment
                     String processorNow = "";
 
 
-
                     if ( cpuTotal <= gpuTotal && cpuTotal <= dspTotal ) { //Execute on CPU
                         processorNow = processorNow.concat("CPU");
                         cpu_exec_current+=cpuTotalCopy;
+                        size_to_consider = batchSize;
                         System.out.println("iModel = " + mobilenet_queue_element + " Batch size = " + batchSize + " Arrival_time = "+ first_arrival_latest3 + " Wait_time " + (temp_wait_time-1) +" Execution time = " + cpu_exec_current + " Processor = " + processorNow);
 
                         isLoadedMobileNet[0]  = true;
@@ -2236,22 +2154,24 @@ public class Camera2BasicFragment extends Fragment
                     else if ( gpuTotal <= cpuTotal && gpuTotal <= dspTotal ){ //Execute on GPU
                         processorNow = processorNow.concat("GPU");
                         gpu_exec_current+=gpuTotalCopy;
+                        size_to_consider = batchSize;
                         System.out.println("iModel = " + mobilenet_queue_element + " Batch size = " + batchSize + " Arrival_time = "+ first_arrival_latest3 + " Wait_time " + (temp_wait_time-1) +" Execution time = " + gpu_exec_current + " Processor = " + processorNow );
 
                         isLoadedMobileNet[1] = true;
-//                        backgroundHandler2.post(periodicClassifyForThreadMobilenetV1Gpu);
+                        backgroundHandler.post(periodicClassifyForThreadMobilenetV1Gpu);
 
                     }
                     else { //Execute on DSP
                         processorNow = processorNow.concat("DSP");
                         dsp_exec_current+=dspTotalCopy;
+                        size_to_consider = batchSize;
                         System.out.println("iModel = " + mobilenet_queue_element + " Batch size = " + batchSize + " Arrival_time = "+ first_arrival_latest3 + " Wait_time " + (temp_wait_time-1) +" Execution time = " + dsp_exec_current + " Processor = " + processorNow);
 
 
                         //loadModel("mobilenet_v1",processorNow);
 
                         isLoadedMobileNet[2] = true;
-                        backgroundHandler3.post(periodicClassifyForThreadMobilenetV1Dsp);
+                        backgroundHandler.post(periodicClassifyForThreadMobilenetV1Dsp);
 
 
                     }
@@ -2327,11 +2247,10 @@ public class Camera2BasicFragment extends Fragment
 
                     cpuTotal += cpu_exec_current;
                     gpuTotal += gpu_exec_current;
-                    dspTotal += gpu_exec_current;
+                    dspTotal += dsp_exec_current;
 
 
                     String processorNow = "";
-
 
 
 
@@ -2339,6 +2258,7 @@ public class Camera2BasicFragment extends Fragment
                         processorNow = processorNow.concat("CPU");
 
                         cpu_exec_current+=cpuTotalCopy;
+                        size_to_consider = batchSize;
                         System.out.println("iModel = " + mobilenet_v2_queue_element + " Batch size = " + batchSize + " Arrival_time = "+ first_arrival_latest4 + " Wait_time " + (temp_wait_time-1) + " Execution time = " + cpu_exec_current + " Processor = " + processorNow );
 
 
@@ -2352,6 +2272,7 @@ public class Camera2BasicFragment extends Fragment
                     else if ( gpuTotal <= cpuTotal && gpuTotal <= dspTotal ) {
                         processorNow = processorNow.concat("GPU");
                         gpu_exec_current+=gpuTotalCopy;
+                        size_to_consider = batchSize;
                         System.out.println("iModel = " + mobilenet_v2_queue_element + " Batch size = " + batchSize + " Arrival_time = "+ first_arrival_latest4 + " Wait_time " + (temp_wait_time-1)+ " Execution time = " + gpu_exec_current + " Processor = " + processorNow );
 
 
@@ -2359,20 +2280,21 @@ public class Camera2BasicFragment extends Fragment
 
                         isLoadedMobileNetV2[1] = true;
 
-                        backgroundHandler2.post(periodicClassifyForThreadMobilenetV2Gpu);
+                        backgroundHandler.post(periodicClassifyForThreadMobilenetV2Gpu);
 
 
                     }
                     else {
                         processorNow = processorNow.concat("DSP");
                         dsp_exec_current+=dspTotalCopy;
+                        size_to_consider = batchSize;
 
                         //loadModel("mobilenet_v2",processorNow);
                         System.out.println("iModel = " + mobilenet_v2_queue_element + " Batch size = " + batchSize + " Arrival_time = "+ first_arrival_latest4 + " Wait_time " + (temp_wait_time-1) + " Execution time = " + dsp_exec_current + " Processor = " + processorNow );
 
 
                         isLoadedMobileNetV2[2] = true;
-                        backgroundHandler3.post(periodicClassifyForThreadMobilenetV2Dsp);
+                        backgroundHandler.post(periodicClassifyForThreadMobilenetV2Dsp);
 
                     }
 
@@ -2585,945 +2507,8 @@ public class Camera2BasicFragment extends Fragment
         }
     }
 
-    /** Takes photos and classify them periodically. */
 
-    private Runnable periodicClassifyInit =
-            new Runnable() {
-                @Override
-                public void run() {
 
-                    //classifyFrame("Thread 1");
-
-
-                    if ( classifier == null ) {
-                        final int modelIndex = modelView.getCheckedItemPosition();
-                        final int deviceIndex = deviceView.getCheckedItemPosition();
-                        final int numThreads = np.getValue();
-                        currentModel = modelIndex;
-                        currentDevice = deviceIndex;
-                        currentNumThreads = numThreads;
-
-                        try {
-                            classifier = new ImageClassifierFloatMobileNet(getActivity());
-                            classifier.setNumThreads(currentNumThreads);
-                        } catch (Exception e) {
-
-                        }
-                    }
-
-
-                    synchronized (lock) {
-
-                        System.out.println("Classifiers started");
-                        if( backgroundThread.isAlive() ) {
-
-                        } else {
-                            backgroundThread.start();
-
-                        }
-
-                        backgroundHandler = new Handler(backgroundThread.getLooper());
-                        synchronized (lock) {
-                            runClassifier = true;
-                        }
-                    }
-                    backgroundHandler.post(periodicClassify);
-                }
-            };
-
-
-    private Runnable periodicClassify =
-            new Runnable() {
-                @Override
-                public void run() {
-
-                    //classifyFrame("Thread 1");
-                    synchronized (lock) {
-                        if (runClassifier) {
-                            try {
-
-                                updateActiveModel();
-
-                                List<String> supplierNames = new ArrayList<String>();
-
-                                int j = 0;
-
-                                int[] timings = new int[]{0,15,39,46,48,57,59,68,75,142,157,159,160,
-                                        170,171,209,226,238,258,275,283,299,313,318,320,338,373,381,
-                                        389,390,399,400,413,456,468,480,512,544,548,564,594,603,613,
-                                        617,617,640,644,666,677,700,739,751,761,778,779,784,794,795,
-                                        807,809,828,838,841,852,855,856,862,864,875,879,939,954,970,
-                                        988,995,1029,1036,1043,1076,1106,1158,1167,1219,1275,1281,1332,
-                                        1351,1363,1375,1379,1396,1396,1407,1440,1452,1479,1483,1519,
-                                        1520,1523};
-
-
-
-                                //int batchSize = 1;
-
-                                String[] models = new String[] {
-
-                                        "mobilenet_v2","inception_v1","inception_v2","inception_v2","inception_v2",
-                                        "inception_v1","inception_v2","inception_v3","inception_v2","mobilenet_v2",
-                                        "inception_v2","inception_v1","inception_v3","inception_v3","inception_v1",
-                                        "mobilenet_v2","mobilenet_v1","mobilenet_v2","inception_v1","mobilenet_v1",
-                                        "inception_v2","mobilenet_v1","inception_v3","inception_v3","mobilenet_v1",
-                                        "inception_v2","inception_v2","inception_v3","inception_v1","inception_v2",
-                                        "inception_v2","mobilenet_v2","mobilenet_v2","inception_v1","inception_v3",
-                                        "inception_v1","mobilenet_v1","inception_v2","mobilenet_v2","inception_v2",
-                                        "mobilenet_v2","inception_v1","inception_v1","inception_v1","inception_v2",
-                                        "mobilenet_v2","inception_v3","mobilenet_v2","inception_v1","mobilenet_v1",
-                                        "inception_v1","inception_v1","mobilenet_v1","inception_v2","mobilenet_v1",
-                                        "inception_v3","inception_v2","inception_v1","inception_v3","inception_v3",
-                                        "inception_v1","mobilenet_v1","mobilenet_v1","mobilenet_v1","inception_v1",
-                                        "inception_v1","inception_v2","mobilenet_v1","mobilenet_v2","mobilenet_v1",
-                                        "inception_v2","inception_v1","mobilenet_v1","inception_v1","inception_v2",
-                                        "mobilenet_v1","inception_v2","inception_v2","mobilenet_v2","mobilenet_v1",
-                                        "inception_v1","inception_v1","inception_v2","inception_v2","mobilenet_v1",
-                                        "inception_v1","inception_v3","mobilenet_v1","inception_v1","mobilenet_v2",
-                                        "inception_v1","inception_v1","mobilenet_v1","mobilenet_v1","inception_v2",
-                                        "mobilenet_v2","inception_v3","inception_v1","inception_v1","mobilenet_v1"
-                                };
-
-
-
-                                int[] cpu_execs = new int[] {
-                                        107,128,202,203,211,126,206,789,192,126,202,130,819,798,132,
-                                        98,79,82,138,84,195,65,787,838,76,198,195,834,122,201,220,
-                                        114,92,130,813,126,68,207,98,211,118,127,126,126,210,107,
-                                        818,94,133,58,124,128,72,192,82,918,206,132,826,928,128,67,
-                                        64,85,134,139,193,81,100,73,209,120,81,135,220,68,197,211,
-                                        75,83,146,120,209,196,60,122,885,71,122,131,149,129,73,66,
-                                        205,97,813,119,149,70
-
-                                };
-
-                                int[] dsp_execs = new int[] {
-                                        137,210,311,287,302,192,249,1140,232,128,308,239,1115,
-                                        1028,234,142,116,146,220,116,280,148,1105,1091,125,311,286,
-                                        1121,215,267,278,162,130,215,1214,200,101,253,141,234,142,
-                                        206,219,207,350,135,1138,141,166,137,201,227,102,292,133,
-                                        1168,288,223,1106,1110,192,107,114,128,180,235,297,118,127,
-                                        93,291,193,101,212,319,137,287,226,138,138,239,234,240,279,
-                                        138,239,1188,124,177,144,240,191,147,102,
-                                        300,128,1109,234,206,95
-
-                                };
-
-                                int[] gpu_execs = new int[] {
-                                        36,34,117,121,80,27,112,120,96,37,103,28,110,110,34,31,
-                                        14,24,36,13,98,14,117,106,12,103,110,119,35,93,121,38,
-                                        36,34,112,25,14,107,39,99,26,27,29,34,97,33,118,24,30,11,
-                                        31,27,11,98,12,109,105,25,103,96,34,15,14,14,28,37,93,13,
-                                        28,12,93,26,9,32,102,12,106,116,31,14,31,31,110,83,11,35,
-                                        121,12,29,35,27,35,13,11,114,31,104,26,19,11
-                                };
-
-                                int[] inception_v1_load_times = new int[] {12, 704,21};
-                                int[] inception_v3_load_times = new int[] {11, 1162,117};
-                                int[] inception_v2_load_times = new int[] {12, 824,23};
-                                int[] mobilenet_v1_load_times = new int[] {9, 635,19};
-                                int[] mobilenet_v2_load_times = new int[] {9, 934,34};
-
-                                boolean[] isLoadedInception = new boolean[] {false,false,false};
-                                boolean[] isLoadedInceptionV3 = new boolean[] {false,false,false};
-                                boolean[] isLoadedInceptionV2 = new boolean[] {false,false,false};
-                                boolean[] isLoadedMobileNet = new boolean[] {false,false,false};
-                                boolean[] isLoadedMobileNetV2 = new boolean[] {false,false,false};
-
-
-                                int cpu_exec_current = 0;
-                                int gpu_exec_current = 0;
-                                int dsp_exec_current = 0;
-
-
-                                String prevDeviceInceptionV1 = "";
-                                String prevDeviceInceptionV2 = "";
-                                String prevDeviceInceptionV3 = "";
-                                String prevDeviceMobilenetV1 = "";
-                                String prevDeviceMobilenetV2 = "";
-
-
-                                List<String> inception_v1_queue = new ArrayList<String>();
-                                List<String> inception_v3_queue = new ArrayList<String>();
-                                List<String> inception_v2_queue = new ArrayList<String>();
-                                List<String> mobilenet_v1_queue = new ArrayList<String>();
-                                List<String> mobilenet_v2_queue = new ArrayList<String>();
-                                List<String> q = new ArrayList<String>();
-
-                                List<Integer> arrivals = new ArrayList<>();
-
-
-
-                                for ( int i = 0; i < 20; i++ ) {
-                                    inception_v1_queue.add("no");
-                                    inception_v3_queue.add("no");
-                                    inception_v2_queue.add("no");
-                                    mobilenet_v1_queue.add("no");
-                                    mobilenet_v2_queue.add("no");
-                                    q.add("no");
-                                }
-
-
-                                String current_model = "";
-                                int last_model_exec = -1;
-
-
-                                for ( int i = 0; i < 1800; i++ ) {
-
-                                    if( cpu_exec_current > 0 ) {
-
-                                        cpu_exec_current-=1;
-                                        System.out.println("Current time = " + i + " cpu remaining = " + cpu_exec_current);
-
-                                    }
-
-                                    if ( gpu_exec_current > 0 ) {
-                                        gpu_exec_current-=1;
-                                    }
-
-                                    if ( dsp_exec_current > 0 ) {
-                                        dsp_exec_current-=1;
-                                    }
-
-                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                                        writeToFile(String.valueOf(inception_v1_queue.size())+"\n",getContext(),"queueSize.txt");
-                                    }
-
-
-                                    String inception_queue_element = "";
-                                    String inception_v3_queue_element = "";
-                                    String inception_v2_queue_element = "";
-                                    String mobilenet_queue_element = "";
-                                    String mobilenet_v2_queue_element = "";
-
-                                    if ( inception_v1_queue.size() != 0 ) {
-                                        inception_queue_element = inception_v1_queue.remove(0);
-                                    }
-
-                                    if ( inception_v3_queue.size() != 0 ) {
-                                        inception_v3_queue_element = inception_v3_queue.remove(0);
-                                    }
-
-                                    if ( inception_v2_queue.size() != 0 ) {
-                                        inception_v2_queue_element = inception_v2_queue.remove(0);
-                                    }
-
-
-                                    if ( mobilenet_v1_queue.size() != 0 ) {
-                                        mobilenet_queue_element = mobilenet_v1_queue.remove(0);
-                                    }
-
-                                    if ( mobilenet_v2_queue.size() != 0 ) {
-                                        mobilenet_v2_queue_element = mobilenet_v2_queue.remove(0);
-                                    }
-
-
-                                    if (!inception_queue_element.equals("no") && !inception_queue_element.equals("")) {
-
-                                        //inception_v1_queue.add("no");
-
-                                        System.out.println("Queue element \t " + inception_queue_element);
-
-                                        int batchSize = 1;
-
-                                        while (inception_v1_queue.contains(inception_queue_element)) {
-                                            inception_v1_queue.remove(inception_queue_element);
-                                            inception_v1_queue.add("no");
-                                            batchSize += 1;
-                                        }
-
-                                        String toWrite = "Timing = " + String.valueOf(i) + " Model = " + inception_queue_element + " Batch = " + String.valueOf(batchSize) + "  " + j + " Queue size = " + inception_v1_queue.size();
-
-
-
-                                        int modelArrival = arrivals.remove(0);
-
-                                        int cpuTotal = cpu_execs[modelArrival]*batchSize;
-
-                                        int gpuTotal = gpu_execs[modelArrival]*batchSize;
-
-                                        int dspTotal = dsp_execs[modelArrival]*batchSize;
-
-                                        if ( !isLoadedInception[0] ) {
-                                            cpuTotal+=inception_v1_load_times[0];
-                                            //isLoadedInception[0] = true;
-                                        }
-                                        if ( !isLoadedInception[1] ) {
-                                            gpuTotal+=inception_v1_load_times[1];
-                                            //isLoadedInception[0] = true;
-                                        }
-
-                                        if ( !isLoadedInception[2] ) {
-                                            dspTotal+=inception_v1_load_times[2];
-                                            //isLoadedInception[0] = true;
-                                        }
-
-                                        int cpuTotalCopy = cpuTotal;
-                                        int gpuTotalCopy = gpuTotal;
-                                        int dspTotalCopy = dspTotal;
-
-                                        cpuTotal += cpu_exec_current;
-                                        gpuTotal += gpu_exec_current;
-                                        dspTotal += dsp_exec_current;
-
-                                        String processorNow = "";
-
-                                        if ( cpuTotal <= gpuTotal && cpuTotal <= dspTotal) {
-                                            processorNow = processorNow.concat("CPU");
-                                            cpu_exec_current+=cpuTotalCopy;
-
-
-                                            //loadModel("inception_v1", processorNow);
-
-                                            isLoadedInception[0] = true;
-
-                                        }
-
-                                        else if ( gpuTotal <= cpuTotal && gpuTotal <= dspTotal ) {
-                                            processorNow = processorNow.concat("GPU");
-                                            gpu_exec_current+=gpuTotalCopy;
-
-                                            //loadModel("inception_v1",processorNow);
-
-                                            isLoadedInception[1] = true;
-                                        }
-
-                                        else {
-                                            processorNow = processorNow.concat("DSP");
-                                            dsp_exec_current+=dspTotalCopy;
-                                            //loadModel("inception_v1",processorNow);
-                                            isLoadedInception[2] = true;
-                                        }
-
-
-                                        System.out.println("Timing = " + i + " CPU total = " + cpuTotal + " Gpu total = " + gpuTotal);
-
-
-                                        System.out.println("Timing = " + i + " Model = " + inception_queue_element + " Batch = " + batchSize + "Arrival = " + modelArrival + "Processor = " + processorNow + " Execs times = " + cpu_exec_current + " " + gpu_exec_current + " " + dsp_exec_current);
-
-                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                                            writeToFile(toWrite+"\n",getContext(),"inceptionV1.txt");
-                                        }
-
-                                    }
-
-                                    if (!inception_v2_queue_element.equals("no") && !inception_v2_queue_element.equals("")) {
-
-                                        //inception_v1_queue.add("no");
-
-                                        System.out.println("Queue element \t " + inception_v2_queue_element);
-
-                                        int batchSize = 1;
-
-                                        while (inception_v2_queue.contains(inception_v2_queue_element)) {
-                                            inception_v2_queue.remove(inception_v2_queue_element);
-                                            inception_v2_queue.add("no");
-                                            batchSize += 1;
-                                        }
-
-                                        String toWrite = "Timing = " + String.valueOf(i) + " Model = " + inception_v2_queue_element + " Batch = " + String.valueOf(batchSize) + "  " + j + " Queue size = " + inception_v2_queue.size();
-
-
-
-                                        int modelArrival = arrivals.remove(0);
-
-                                        int cpuTotal = cpu_execs[modelArrival]*batchSize;
-
-                                        int gpuTotal = gpu_execs[modelArrival]*batchSize;
-
-                                        int dspTotal = dsp_execs[modelArrival]*batchSize;
-
-                                        if ( !isLoadedInceptionV2[0] ) {
-                                            cpuTotal+=inception_v2_load_times[0];
-                                            //isLoadedInception[0] = true;
-                                        }
-                                        if ( !isLoadedInceptionV2[1] ) {
-                                            gpuTotal+=inception_v2_load_times[1];
-                                            //isLoadedInception[0] = true;
-                                        }
-
-                                        if ( !isLoadedInceptionV2[2] ) {
-                                            dspTotal+=inception_v2_load_times[2];
-                                            //isLoadedInception[0] = true;
-                                        }
-
-                                        int cpuTotalCopy = cpuTotal;
-                                        int gpuTotalCopy = gpuTotal;
-                                        int dspTotalCopy = dspTotal;
-
-                                        cpuTotal += cpu_exec_current;
-                                        gpuTotal += gpu_exec_current;
-                                        dspTotal += dsp_exec_current;
-
-                                        String processorNow = "";
-
-                                        if ( cpuTotal <= gpuTotal && cpuTotal <= dspTotal) {
-                                            processorNow = processorNow.concat("CPU");
-                                            cpu_exec_current+=cpuTotalCopy;
-
-                                            //loadModel("inception_v2",processorNow);
-
-                                            isLoadedInceptionV2[0] = true;
-                                            backgroundHandler3.post(periodicClassifyForThreadInceptionV1Cpu);
-                                        }
-
-                                        else if ( gpuTotal <= cpuTotal && gpuTotal <= dspTotal ) {
-                                            processorNow = processorNow.concat("GPU");
-                                            gpu_exec_current+=gpuTotalCopy;
-
-                                            //loadModel("inception_v2",processorNow);
-                                            isLoadedInceptionV2[1] = true;
-                                            backgroundHandler3.post(periodicClassifyForThreadinceptionV1Gpu);
-                                        }
-
-                                        else {
-                                            processorNow = processorNow.concat("DSP");
-                                            dsp_exec_current+=dspTotalCopy;
-
-                                            //loadModel("inception_v2",processorNow);
-                                            isLoadedInceptionV2[2] = true;
-                                            backgroundHandler3.post(periodicClassifyForThreadinceptionV1Dsp);
-                                        }
-
-
-                                        System.out.println("Timing = " + i + " CPU total = " + cpuTotal + " Gpu total = " + gpuTotal);
-
-
-                                        System.out.println("Timing = " + i + " Model = " + inception_v2_queue_element + " Batch = " + batchSize + "Arrival = " + modelArrival + "Processor = " + processorNow + " Execs times = " + cpu_exec_current + " " + gpu_exec_current + " " + dsp_exec_current);
-
-                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                                            writeToFile(toWrite+"\n",getContext(),"inceptionV1.txt");
-                                        }
-
-                                    }
-
-
-                                    if (!inception_v3_queue_element.equals("no") && !inception_v3_queue_element.equals("")) {
-
-                                        //inception_v1_queue.add("no");
-
-                                        System.out.println("Queue element \t " + inception_v3_queue_element);
-
-                                        int batchSize = 1;
-
-                                        while (inception_v3_queue.contains(inception_v3_queue_element)) {
-                                            inception_v3_queue.remove(inception_v3_queue_element);
-                                            inception_v3_queue.add("no");
-                                            batchSize += 1;
-                                        }
-
-                                        String toWrite = "Timing = " + String.valueOf(i) + " Model = " + inception_v3_queue_element + " Batch = " + String.valueOf(batchSize) + "  " + j + " Queue size = " + inception_v3_queue.size();
-
-
-
-                                        int modelArrival = arrivals.remove(0);
-
-                                        int cpuTotal = cpu_execs[modelArrival]*batchSize;
-
-                                        int gpuTotal = gpu_execs[modelArrival]*batchSize;
-
-                                        int dspTotal = dsp_execs[modelArrival]*batchSize;
-
-                                        if ( !isLoadedInceptionV3[0] ) {
-                                            cpuTotal+=inception_v3_load_times[0];
-                                            //isLoadedInception[0] = true;
-                                        }
-                                        if ( !isLoadedInceptionV3[1] ) {
-                                            gpuTotal+=inception_v3_load_times[1];
-                                            //isLoadedInception[0] = true;
-                                        }
-
-                                        if ( !isLoadedInceptionV3[2] ) {
-                                            dspTotal+=inception_v3_load_times[1];
-                                            //isLoadedInception[0] = true;
-                                        }
-
-                                        int cpuTotalCopy = cpuTotal;
-                                        int gpuTotalCopy = gpuTotal;
-                                        int dspTotalCopy = dspTotal;
-
-                                        cpuTotal += cpu_exec_current;
-                                        gpuTotal += gpu_exec_current;
-                                        dspTotal += gpu_exec_current;
-
-                                        String processorNow = "";
-
-                                        if ( cpuTotal <= gpuTotal && cpuTotal <= dspTotal) {
-                                            processorNow = processorNow.concat("CPU");
-                                            cpu_exec_current+=cpuTotalCopy;
-
-                                            //loadModel("inception_v3",processorNow);
-                                            isLoadedInceptionV3[0] = true;
-                                        }
-
-                                        else if ( gpuTotal <= cpuTotal && gpuTotal <= dspTotal ) {
-                                            processorNow = processorNow.concat("GPU");
-                                            gpu_exec_current+=gpuTotalCopy;
-
-                                            //loadModel("inception_v3",processorNow);
-
-                                            isLoadedInceptionV3[1] = true;
-                                        }
-
-                                        else {
-                                            processorNow = processorNow.concat("DSP");
-                                            dsp_exec_current+=dspTotalCopy;
-
-                                            //loadModel("inception_v3",processorNow);
-
-                                            isLoadedInceptionV3[2] = true;
-                                        }
-
-
-                                        System.out.println("Timing = " + i + " CPU total = " + cpuTotal + " Gpu total = " + gpuTotal);
-
-
-                                        System.out.println("Timing = " + i + " Model = " + inception_v3_queue_element + " Batch = " + batchSize + "Arrival = " + modelArrival + "Processor = " + processorNow + " Execs times = " + cpu_exec_current + " " + gpu_exec_current + " " + dsp_exec_current);
-
-                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                                            writeToFile(toWrite+"\n",getContext(),"inceptionV3.txt");
-                                        }
-
-                                    }
-
-                                    if (!mobilenet_queue_element.equals("no") && !mobilenet_queue_element.equals("")) {
-
-                                        //inception_v1_queue.add("no");
-
-                                        System.out.println("Queue element \t " + mobilenet_queue_element);
-
-                                        int batchSize = 1;
-
-                                        while (mobilenet_v1_queue.contains(mobilenet_queue_element)) {
-                                            mobilenet_v1_queue.remove(mobilenet_queue_element);
-                                            mobilenet_v1_queue.add("no");
-                                            batchSize += 1;
-                                        }
-
-                                        int modelArrival = arrivals.remove(0);
-
-                                        int cpuTotal = cpu_execs[modelArrival]*batchSize;
-                                        int gpuTotal = gpu_execs[modelArrival]*batchSize;
-                                        int dspTotal = gpu_execs[modelArrival]*batchSize;
-
-                                        if ( !isLoadedMobileNet[0] ) {
-                                            cpuTotal+=mobilenet_v1_load_times[0];
-                                            //isLoadedInception[0] = true;
-                                        }
-                                        if ( !isLoadedMobileNet[1] ) {
-                                            gpuTotal+=mobilenet_v1_load_times[1];
-                                            //isLoadedInception[0] = true;
-                                        }
-
-                                        if ( !isLoadedMobileNet[2] ) {
-                                            dspTotal+=mobilenet_v1_load_times[2];
-                                            //isLoadedInception[0] = true;
-                                        }
-
-                                        int cpuTotalCopy = cpuTotal;
-                                        int gpuTotalCopy = gpuTotal;
-                                        int dspTotalCopy = dspTotal;
-
-
-                                        cpuTotal += cpu_exec_current;
-                                        gpuTotal += gpu_exec_current;
-                                        gpuTotal += dsp_exec_current;
-
-
-                                        String processorNow = "";
-
-                                        if ( cpuTotal <= gpuTotal && cpuTotal <= dspTotal ) {
-                                            processorNow = processorNow.concat("CPU");
-                                            cpu_exec_current+=cpuTotalCopy;
-
-                                            //loadModel("mobilenet_v1",processorNow);
-
-                                            isLoadedMobileNet[0] = true;
-                                        }
-
-                                        else if ( gpuTotal <= cpuTotal && gpuTotal <= dspTotal ){
-                                            processorNow = processorNow.concat("GPU");
-                                            gpu_exec_current+=gpuTotalCopy;
-
-                                            //loadModel("mobilenet_v1",processorNow);
-
-                                            isLoadedMobileNet[1] = true;
-                                        }
-                                        else {
-                                            processorNow = processorNow.concat("DSP");
-                                            dsp_exec_current+=dspTotalCopy;
-
-                                            //loadModel("mobilenet_v1",processorNow);
-
-                                            isLoadedMobileNet[2] = true;
-                                        }
-
-                                        System.out.println("Timing = " + i + "CPU total = " + cpuTotal + " Gpu total = " + gpuTotal);
-
-
-                                        String toWrite = "Timing = " + String.valueOf(i) + " Model = " + mobilenet_queue_element + " Batch = " + String.valueOf(batchSize) + "  " + j + " Queue size = " + mobilenet_v1_queue.size();
-
-                                        System.out.println("Timing = " + i + " Model = " + mobilenet_queue_element + " Batch = " + batchSize + "Arrival = " + modelArrival+ " Processor = " + processorNow + " Execs times = " + cpu_exec_current + " " + gpu_exec_current + " " + dsp_exec_current);
-
-                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                                            writeToFile(toWrite+"\n",getContext(),"mobilenetQueue.txt");
-                                        }
-
-                                    }
-
-                                    if (!mobilenet_v2_queue_element.equals("no") && !mobilenet_v2_queue_element.equals("")) {
-
-                                        //inception_v1_queue.add("no");
-
-                                        System.out.println("Queue element \t " + mobilenet_v2_queue_element);
-
-                                        int batchSize = 1;
-
-                                        while (mobilenet_v2_queue.contains(mobilenet_v2_queue_element)) {
-                                            mobilenet_v2_queue.remove(mobilenet_v2_queue_element);
-                                            mobilenet_v2_queue.add("no");
-                                            batchSize += 1;
-                                        }
-
-                                        int modelArrival = arrivals.remove(0);
-
-                                        int cpuTotal = cpu_execs[modelArrival]*batchSize;
-                                        int gpuTotal = gpu_execs[modelArrival]*batchSize;
-                                        int dspTotal = dsp_execs[modelArrival]*batchSize;
-
-                                        if ( !isLoadedMobileNetV2[0] ) {
-                                            cpuTotal+=mobilenet_v2_load_times[0];
-                                            //isLoadedInception[0] = true;
-                                        }
-                                        if ( !isLoadedMobileNetV2[1] ) {
-                                            gpuTotal+=mobilenet_v2_load_times[1];
-                                            //isLoadedInception[0] = true;
-                                        }
-                                        if ( !isLoadedMobileNetV2[2] ) {
-                                            dspTotal+=mobilenet_v2_load_times[2];
-                                            //isLoadedInception[0] = true;
-                                        }
-
-                                        int cpuTotalCopy = cpuTotal;
-                                        int gpuTotalCopy = gpuTotal;
-                                        int dspTotalCopy = dspTotal;
-
-
-                                        cpuTotal += cpu_exec_current;
-                                        gpuTotal += gpu_exec_current;
-                                        dspTotal += gpu_exec_current;
-
-
-                                        String processorNow = "";
-
-                                        if ( cpuTotal <= gpuTotal && cpuTotal <= dspTotal ) {
-                                            processorNow = processorNow.concat("CPU");
-                                            cpu_exec_current+=cpuTotalCopy;
-
-                                            //loadModel("mobilenet_v2",processorNow);
-                                            isLoadedMobileNetV2[0] = true;
-
-                                            //backgroundHandler.post(periodicClassifyForThread);
-                                        }
-
-                                        else if ( gpuTotal <= cpuTotal && gpuTotal <= dspTotal ) {
-                                            processorNow = processorNow.concat("GPU");
-                                            gpu_exec_current+=gpuTotalCopy;
-
-                                            //loadModel("mobilenet_v2",processorNow);
-
-                                            isLoadedMobileNetV2[1] = true;
-                                            backgroundHandler2.post(periodicClassifyForThread2);
-                                        }
-                                        else {
-                                            processorNow = processorNow.concat("DSP");
-                                            dsp_exec_current+=dspTotalCopy;
-
-                                            //loadModel("mobilenet_v2",processorNow);
-
-                                            isLoadedMobileNetV2[2] = true;
-                                            backgroundHandler3.post(periodicClassifyForThread3);
-                                        }
-
-                                        System.out.println("Timing = " + i + "CPU total = " + cpuTotal + " Gpu total = " + gpuTotal);
-
-
-                                        String toWrite = "Timing = " + String.valueOf(i) + " Model = " + mobilenet_v2_queue_element + " Batch = " + String.valueOf(batchSize) + "  " + j + " Queue size = " + mobilenet_v2_queue.size();
-
-                                        System.out.println("Timing = " + i + " Model = " + mobilenet_v2_queue_element + " Batch = " + batchSize + "Arrival = " + modelArrival+ " Processor = " + processorNow + " Execs times = " + cpu_exec_current + " " + gpu_exec_current + " " + dsp_exec_current);
-
-                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                                            writeToFile(toWrite+"\n",getContext(),"mobilenetV2Queue.txt");
-                                        }
-
-                                        runClassifier2 = true;
-
-                                    }
-
-
-
-                                    if (j < models.length) {
-
-                                        System.out.println("reached here " + j + "  " + i);
-
-
-                                        if (timings[j] == i) {
-                                            while ( timings[j] == i) { // add instances to respective queues arriving at a time
-
-                                                if ( models[j].equals("inception_v1")) {
-
-
-                                                    if ( !inception_v1_queue.contains(models[j])) {
-                                                        arrivals.add(j);
-                                                    }
-
-
-                                                    inception_v1_queue.add(models[j]);
-
-                                                    if( mobilenet_v1_queue.size() < 20)
-                                                        mobilenet_v1_queue.add("no");
-
-                                                    if( mobilenet_v2_queue.size() < 20)
-                                                        mobilenet_v2_queue.add("no");
-
-                                                    if( inception_v3_queue.size() < 20)
-                                                        inception_v3_queue.add("no");
-
-                                                    if( inception_v2_queue.size() < 20)
-                                                        inception_v2_queue.add("no");
-
-                                                }
-
-                                                else if ( models[j].equals("inception_v2")) {
-
-
-                                                    if ( !inception_v2_queue.contains(models[j])) {
-                                                        arrivals.add(j);
-                                                    }
-
-                                                    inception_v2_queue.add(models[j]);
-
-                                                    if( mobilenet_v1_queue.size() < 20)
-                                                        mobilenet_v1_queue.add("no");
-
-                                                    if( mobilenet_v2_queue.size() < 20)
-                                                        mobilenet_v2_queue.add("no");
-
-                                                    if( inception_v3_queue.size() < 20)
-                                                        inception_v3_queue.add("no");
-
-                                                    if( inception_v1_queue.size() < 20)
-                                                        inception_v1_queue.add("no");
-
-
-                                                }
-
-                                                else if ( models[j].equals("mobilenet_v1")) {
-
-                                                    if ( !mobilenet_v1_queue.contains(models[j])) {
-                                                        arrivals.add(j);
-                                                        mobilenet_v1_queue.add(models[j]);
-                                                    }
-                                                    else {
-                                                        mobilenet_v1_queue.add(models[j]);
-                                                    }
-
-
-                                                    //+";;"+cpu_execs[j] + ";;" + gpu_execs[j]
-                                                    if ( inception_v1_queue.size() < 20 )
-                                                        inception_v1_queue.add("no");
-
-                                                    if( mobilenet_v2_queue.size() < 20)
-                                                        mobilenet_v2_queue.add("no");
-
-                                                    if( inception_v3_queue.size() < 20)
-                                                        inception_v3_queue.add("no");
-                                                    if( inception_v2_queue.size() < 20)
-                                                        inception_v2_queue.add("no");
-                                                }
-
-                                                else if ( models[j].equals("mobilenet_v2")) {
-
-                                                    if ( !mobilenet_v2_queue.contains(models[j])) {
-                                                        arrivals.add(j);
-                                                        mobilenet_v2_queue.add(models[j]);
-                                                    }
-                                                    else {
-                                                        mobilenet_v2_queue.add(models[j]);
-                                                    }
-
-
-                                                    //+";;"+cpu_execs[j] + ";;" + gpu_execs[j]
-                                                    if ( inception_v1_queue.size() < 20 )
-                                                        inception_v1_queue.add("no");
-
-                                                    if( mobilenet_v1_queue.size() < 20)
-                                                        mobilenet_v1_queue.add("no");
-
-                                                    if( inception_v3_queue.size() < 20)
-                                                        inception_v3_queue.add("no");
-                                                    if( inception_v2_queue.size() < 20)
-                                                        inception_v2_queue.add("no");
-                                                }
-
-                                                else if ( models[j].equals("inception_v3")) {
-
-                                                    if ( !inception_v3_queue.contains(models[j])) {
-                                                        arrivals.add(j);
-                                                        inception_v3_queue.add(models[j]);
-                                                    }
-                                                    else {
-                                                        inception_v3_queue.add(models[j]);
-                                                    }
-
-
-                                                    //+";;"+cpu_execs[j] + ";;" + gpu_execs[j]
-                                                    if ( inception_v1_queue.size() < 20 )
-                                                        inception_v1_queue.add("no");
-
-                                                    if( mobilenet_v1_queue.size() < 20)
-                                                        mobilenet_v1_queue.add("no");
-
-                                                    if( mobilenet_v2_queue.size() < 20)
-                                                        mobilenet_v2_queue.add("no");
-
-                                                    if( inception_v2_queue.size() < 20)
-                                                        inception_v2_queue.add("no");
-                                                }
-
-                                                System.out.println("Exec " + models[j] + " " + i);
-
-                                                j += 1;
-
-                                                if ( j == 100 ){
-                                                    break;
-                                                }
-
-                                            }
-
-                                            continue;
-
-                                        }
-
-                                        inception_v1_queue.add("no");
-                                        mobilenet_v1_queue.add("no");
-                                        mobilenet_v2_queue.add("no");
-                                        inception_v3_queue.add("no");
-                                        inception_v2_queue.add("no");
-
-
-                                    }
-
-                                }
-
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                            }
-                        }
-                    }
-
-                }
-            };
-
-    private Runnable periodicClassify2 =
-            new Runnable() {
-                @Override
-                public void run() {
-                    synchronized (lock) {
-                        if (runClassifier2) {
-                            try {
-                                classifyFrame("Thread 2",classifier2);
-                                //classifyFrame("Thread 2");
-                                //classifyFrame("Thread 2");
-
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
-                        }
-                    }
-                    //classifyFrame("Thread 2");
-                    backgroundHandler2.post(periodicClassify2);
-                }
-            };
-
-    private Runnable periodicClassifyForThread =
-            new Runnable() {
-                @Override
-                public void run() {
-                    synchronized (lock) {
-                        if (runClassifier2) {
-                            try {
-
-
-
-                                classifyFrame("Thread 2",mobilenetV2Cpu);
-
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
-                        }
-                    }
-                    //classifyFrame("Thread 2");
-                    //backgroundHandler2.post(periodicClassifyForThread);
-                }
-            };
-
-    private Runnable periodicClassifyForThread2 =
-            new Runnable() {
-                @Override
-                public void run() {
-                    synchronized (lock) {
-                        if (runClassifier2) {
-                            try {
-
-                                if( mobilenetV2Gpu == null ) {
-                                    mobilenetV2Gpu = new ImageClassifierFloatMobileNetV2(getActivity());
-                                    mobilenetV2Gpu.setNumThreads(currentNumThreads);
-
-                                    mobilenetV2Gpu.useGpu();
-
-                                }
-
-                                classifyFrame2("Thread 2",mobilenetV2Gpu);
-
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
-                        }
-                    }
-                    //classifyFrame("Thread 2");
-                    //backgroundHandler2.post(periodicClassifyForThread);
-                }
-            };
-
-    private Runnable periodicClassifyForThread3 =
-            new Runnable() {
-                @Override
-                public void run() {
-                    synchronized (lock) {
-                        if (runClassifier2) {
-                            try {
-
-                                if( mobilenetV2Dsp == null ) {
-                                    mobilenetV2Dsp = new ImageClassifierFloatMobileNetV2(getActivity());
-                                    mobilenetV2Dsp.setNumThreads(currentNumThreads);
-
-                                    mobilenetV2Dsp.useDSP();
-
-                                }
-
-                                classifyFrame2("Thread 2",mobilenetV2Dsp);
-
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
-                        }
-                    }
-                    //classifyFrame("Thread 2");
-                    //backgroundHandler2.post(periodicClassifyForThread);
-                }
-            };
 
     private Runnable periodicClassifyForThreadInceptionV1Cpu =
             new Runnable() {
@@ -3537,9 +2522,11 @@ public class Camera2BasicFragment extends Fragment
                                     inceptionV1Cpu = new ImageClassifierInceptionV1Quant(getActivity());
                                     inceptionV1Cpu.setNumThreads(currentNumThreads);
 
-                                }
 
-                                classifyFrame2("Thread 2",inceptionV1Cpu);
+                                }
+                                System.out.println("inceptionV1Cpu" + " " + size_to_consider);
+
+                                classifyFrame2("Thread 2 iv1cpu ",inceptionV1Cpu);
 
                             } catch (IOException e) {
                                 e.printStackTrace();
@@ -3569,11 +2556,13 @@ public class Camera2BasicFragment extends Fragment
 
                                     inceptionV1Gpu.useGpu();
 
+
                                 }
 
+                                System.out.println("inceptionV1Gpu" + " " + size_to_consider);
 
 
-                                classifyFrame2("Thread 2",inceptionV1Gpu);
+                                classifyFrame2("Thread 2 iv1gpu ",inceptionV1Gpu);
 
                             } catch (IOException e) {
                                 e.printStackTrace();
@@ -3599,9 +2588,12 @@ public class Camera2BasicFragment extends Fragment
 
                                     inceptionV1Dsp.useDSP();
 
-                                }
 
-                                classifyFrame2("Thread 2",inceptionV1Dsp);
+
+                                }
+                                System.out.println("inceptionV1Dsp" + " " + size_to_consider);
+
+                                classifyFrame2("Thread 2 iv1dsp ",inceptionV1Dsp);
 
                             } catch (IOException e) {
                                 e.printStackTrace();
@@ -3627,8 +2619,9 @@ public class Camera2BasicFragment extends Fragment
 
 
                                 }
+                                System.out.println("inceptionV3Cpu" + " " + size_to_consider);
 
-                                classifyFrame2("Thread 2",inceptionV3Cpu);
+                                classifyFrame2("Thread 2 iv3cpu ",inceptionV3Cpu);
 
                             } catch (IOException e) {
                                 e.printStackTrace();
@@ -3658,11 +2651,14 @@ public class Camera2BasicFragment extends Fragment
 
                                     inceptionV3Gpu.useGpu();
 
+
+
                                 }
 
+                                System.out.println("inceptionV3Gpu" + " " + size_to_consider);
 
 
-                                classifyFrame2("Thread 2",inceptionV3Gpu);
+                                classifyFrame2("Thread 2 iv3gpu ",inceptionV3Gpu);
 
                             } catch (IOException e) {
                                 e.printStackTrace();
@@ -3689,8 +2685,9 @@ public class Camera2BasicFragment extends Fragment
                                     inceptionV3Dsp.useDSP();
 
                                 }
+                                System.out.println("inceptionV3Dsp" + " " + size_to_consider);
 
-                                classifyFrame2("Thread 2",inceptionV3Dsp);
+                                classifyFrame2("Thread 2 iv3dsp ",inceptionV3Dsp);
 
                             } catch (IOException e) {
                                 e.printStackTrace();
@@ -3713,9 +2710,12 @@ public class Camera2BasicFragment extends Fragment
                                 if( mobilenetV1Cpu == null ) {
                                     mobilenetV1Cpu = new ImageClassifierFloatMobileNet (getActivity());
                                     mobilenetV1Cpu.setNumThreads(currentNumThreads);
-                                }
 
-                                classifyFrame2("Thread 2",mobilenetV1Cpu);
+
+                                }
+                                System.out.println("mobilenetV1Cpu" + " " + size_to_consider);
+
+                                classifyFrame2("Thread 2 mv1cpu ",mobilenetV1Cpu);
 
                             } catch (IOException e) {
                                 e.printStackTrace();
@@ -3739,15 +2739,20 @@ public class Camera2BasicFragment extends Fragment
 
                             try {
 
-                                if( mobilenetV1Cpu == null ) {
-                                    mobilenetV1Cpu = new ImageClassifierFloatMobileNet(getActivity());
-                                    mobilenetV1Cpu.setNumThreads(currentNumThreads);
+                                if( mobilenetV1Gpu == null ) {
+                                    mobilenetV1Gpu = new ImageClassifierFloatMobileNet(getActivity());
+                                    mobilenetV1Gpu.setNumThreads(currentNumThreads);
+
+                                    mobilenetV1Gpu.useGpu();
+
+
+
 
                                 }
 
+                                System.out.println("mobilenetV1Gpu" + " " + size_to_consider);
 
-
-                                classifyFrame2("Thread 2",mobilenetV1Cpu);
+                                classifyFrame2("Thread 2 mv1gpu ",mobilenetV1Gpu);
 
                             } catch (IOException e) {
                                 e.printStackTrace();
@@ -3767,15 +2772,18 @@ public class Camera2BasicFragment extends Fragment
                         if (runClassifier2) {
                             try {
 
-                                if( mobilenetV1Cpu == null ) {
-                                    mobilenetV1Cpu = new ImageClassifierFloatMobileNetV2(getActivity());
-                                    mobilenetV1Cpu.setNumThreads(currentNumThreads);
+                                if( mobilenetV1Dsp == null ) {
+                                    mobilenetV1Dsp = new ImageClassifierFloatMobileNetV2(getActivity());
+                                    mobilenetV1Dsp.setNumThreads(currentNumThreads);
 
-                                    mobilenetV1Cpu.useDSP();
+                                    mobilenetV1Dsp.useDSP();
+
+
 
                                 }
+                                System.out.println("mobilenetV1Dsp" + " " + size_to_consider);
 
-                                classifyFrame2("Thread 2",mobilenetV1Cpu);
+                                classifyFrame2("Thread 2 mv1dsp ",mobilenetV1Dsp);
 
                             } catch (IOException e) {
                                 e.printStackTrace();
@@ -3799,9 +2807,12 @@ public class Camera2BasicFragment extends Fragment
                                 if( mobilenetV2Cpu == null ) {
                                     mobilenetV2Cpu = new ImageClassifierFloatMobileNet (getActivity());
                                     mobilenetV2Cpu.setNumThreads(currentNumThreads);
-                                }
 
-                                classifyFrame2("Thread 2",mobilenetV2Cpu);
+
+                                }
+                                System.out.println("mobilenetV2Cpu" + " " + size_to_consider);
+
+                                classifyFrame2("Thread 2 mv2cpu ",mobilenetV2Cpu);
 
                             } catch (IOException e) {
                                 e.printStackTrace();
@@ -3830,12 +2841,13 @@ public class Camera2BasicFragment extends Fragment
                                     mobilenetV2Gpu.setNumThreads(currentNumThreads);
 
                                     mobilenetV2Gpu.useGpu();
+                                    System.out.println("mobilenetV2Gpu" + " " + size_to_consider);
 
                                 }
 
 
 
-                                classifyFrame2("Thread 2",mobilenetV2Gpu);
+                                classifyFrame2("Thread 2 mv2gpu ",mobilenetV2Gpu);
 
                             } catch (IOException e) {
                                 e.printStackTrace();
@@ -3861,9 +2873,14 @@ public class Camera2BasicFragment extends Fragment
 
                                     mobilenetV2Dsp.useDSP();
 
+
+
                                 }
 
-                                classifyFrame2("Thread 2",mobilenetV2Dsp);
+                                System.out.println("mobilenetV2Dsp" + " " + size_to_consider);
+
+
+                                classifyFrame2("Thread 2 mv2dsp ",mobilenetV2Dsp);
 
                             } catch (IOException e) {
                                 e.printStackTrace();
@@ -4024,334 +3041,11 @@ public class Camera2BasicFragment extends Fragment
 
 
     /** Classifies a frame from the preview stream. */
-    private void classifyFrame(String thread_name, ImageClassifier classifierNow) throws IOException {
-
-        Log.d("Thread Name", thread_name);
-
-        Context context1;
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            context1 = getContext();
-        }
-
-
-        if (classifierNow == null || getActivity() == null ) {
-            // It"s important to not call showToast every frame, or else the app will starve and
-            // hang. updateActiveModel() already puts an error message up with showToast.
-            // showToast("Uninitialized Classifier or invalid context.");
-            Log.d("Null Classifier", "True");
-            return;
-        }
-        SpannableStringBuilder textToShow = new SpannableStringBuilder();
-        SpannableStringBuilder textToShow2 = new SpannableStringBuilder();
-        SpannableStringBuilder textToShow3 = new SpannableStringBuilder();
-        SpannableStringBuilder textToShow4 = new SpannableStringBuilder();
-
-
-
-        if( thread_name.equals("Thread 1")) {
-
-//            classifier.close();
-//
-//            classifier = null;
-//
-//
-//
-//            classifier= new ImageClassifierQuantizedMobileNet(getActivity());
-
-            textToShow = new SpannableStringBuilder();
-
-
-
-            //Get frame to bitmap
-            Bitmap bmFrame = mediaMetadataRetriever.getFrameAtTime(10000);
-
-
-            //Bitmap bitmap = textureView.getBitmap(classifier.getImageSizeX(), classifier.getImageSizeY());
-
-            Bitmap resizedBitmap = Bitmap.createScaledBitmap(
-                    bmFrame, classifierNow.getImageSizeX(), classifierNow.getImageSizeY(), false);
-
-
-
-            Bitmap bitmap = resizedBitmap;
-
-            //classify Bitmap
-            Long l1 = classifier.classifyFrame(bitmap, textToShow,thread_name);
-            bitmap.recycle();
-
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                writeToFile(l1.toString()+"\n",getContext(),"thread1.txt");
-            }
-
-            Float f1 = cpuTemperature1("cat /sys/class/thermal/thermal_zone1/temp");
-            Float f2 = cpuTemperature1("cat /sys/class/thermal/thermal_zone2/temp");
-            Float f3 = cpuTemperature1("cat /sys/class/thermal/thermal_zone3/temp");
-            Float f4 = cpuTemperature1("cat /sys/class/thermal/thermal_zone4/temp");
-            Float f5 = cpuTemperature1("cat /sys/class/thermal/thermal_zone7/temp");
-            Float f6 = cpuTemperature1("cat /sys/class/thermal/thermal_zone8/temp");
-            Float f7 = cpuTemperature1("cat /sys/class/thermal/thermal_zone9/temp");
-            Float f8 = cpuTemperature1("cat /sys/class/thermal/thermal_zone10/temp");
-
-            System.out.println(f1);
-
-            String temps1 = f1.toString() + "\t" + f2.toString() + "\t" + f3.toString() + "\t" + f4.toString() + "\t" +
-                    f5.toString() + "\t" + f6.toString() + "\t" + f7.toString() + "\t" + f8.toString() + "\t";
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                writeToFile(temps1+"\n",getContext(),"thread1Temp.txt");
-            }
-
-
-            total+=l1;
-            i1+=1;
-
-
-            if( i1 == 10 ) {
-                avg1 = total/10;
-                String string = total.toString();
-
-
-                //textView2.setText("Thread 1: " + string);
-                i1=0;
-                total=0l;
-
-            }
-
-
-            showToast(textToShow);
-
-            String text1 = "Thread 1 " + Double.toString(avg1);
-            textView2.setText(text1);
-
-        }
-
-//        else {
-//
-////            classifier.close();
-////
-////            classifier = null;
-////
-////
-////
-////            classifier= new ImageClassifierQuantizedMobileNet(getActivity());
-//
-//
-//
-//            Bitmap bitmap = textureView.getBitmap(classifier.getImageSizeX(), classifier.getImageSizeY());
-//            Long l1 = classifier.classifyFrame(bitmap, textToShow,thread_name);
-//            bitmap.recycle();
-//
-//            total+=l1;
-//            i1+=1;
-//
-//            if( i1 == 10 ) {
-//                total = total/10;
-//                String string = total.toString();
-//
-//                textView2.setText("Quant: " + string);
-//                i1=0;
-//                total=0l;
-//
-//            }
-//
-//        }
-
-        else if (thread_name.equals("Thread 2")) {
-            //classifier = new ImageClassifierFloatMobileNet(getActivity());
-            //SpannableStringBuilder textToShow2 = new SpannableStringBuilder();
-
-
-
-            textToShow2 = new SpannableStringBuilder();
-            Bitmap bitmap2 = textureView.getBitmap(classifierNow.getImageSizeX(), classifierNow.getImageSizeY());
-            Long l2 = classifierNow.classifyFrame(bitmap2, textToShow2,thread_name);
-            bitmap2.recycle();
-
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                writeToFile(l2.toString()+"\n",getContext(),"thread2.txt");
-            }
-
-            Float f1 = cpuTemperature1("cat /sys/class/thermal/thermal_zone1/temp");
-            Float f2 = cpuTemperature1("cat /sys/class/thermal/thermal_zone2/temp");
-            Float f3 = cpuTemperature1("cat /sys/class/thermal/thermal_zone3/temp");
-            Float f4 = cpuTemperature1("cat /sys/class/thermal/thermal_zone4/temp");
-            Float f5 = cpuTemperature1("cat /sys/class/thermal/thermal_zone7/temp");
-            Float f6 = cpuTemperature1("cat /sys/class/thermal/thermal_zone8/temp");
-            Float f7 = cpuTemperature1("cat /sys/class/thermal/thermal_zone9/temp");
-            Float f8 = cpuTemperature1("cat /sys/class/thermal/thermal_zone10/temp");
-
-            System.out.println(f1);
-
-            String temps2 = f1.toString() + "\t" + f2.toString() + "\t" + f3.toString() + "\t" + f4.toString() + "\t" +
-                    f5.toString() + "\t" + f6.toString() + "\t" + f7.toString() + "\t" + f8.toString() + "\t";
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                writeToFile(temps2+"\n",getContext(),"thread2Temp.txt");
-            }
-
-            total2+=l2;
-            i2+=1;
-
-
-            if( i2 == 10 ) {
-                avg2 = total2/10;
-                //String string = total2.toString();
-
-
-                //textView3.setText("Thread 2: " + string);
-                i2=0;
-                total2=0l;
-
-            }
-
-            showToast(textToShow2);
-
-            String text2 = "Thread 2 " + Double.toString(avg2);
-            textView2.setText(text2);
-
-
-
-        }
-
-        else if (thread_name.equals("Thread 3")) {
-            System.out.println("Thread 3 classifying");
-
-            textToShow3 = new SpannableStringBuilder();
-
-            Bitmap bitmap3 = textureView.getBitmap(classifier3.getImageSizeX(), classifier3.getImageSizeY());
-            Long l3 = classifier3.classifyFrame(bitmap3, textToShow3,thread_name);
-            bitmap3.recycle();
-            showToast(textToShow3);
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                System.out.println("Thread 3 write");
-                writeToFile(l3.toString()+"\n",getContext(),"thread3.txt");
-            }
-
-            Float f1 = cpuTemperature1("cat /sys/class/thermal/thermal_zone1/temp");
-            Float f2 = cpuTemperature1("cat /sys/class/thermal/thermal_zone2/temp");
-            Float f3 = cpuTemperature1("cat /sys/class/thermal/thermal_zone3/temp");
-            Float f4 = cpuTemperature1("cat /sys/class/thermal/thermal_zone4/temp");
-            Float f5 = cpuTemperature1("cat /sys/class/thermal/thermal_zone7/temp");
-            Float f6 = cpuTemperature1("cat /sys/class/thermal/thermal_zone8/temp");
-            Float f7 = cpuTemperature1("cat /sys/class/thermal/thermal_zone9/temp");
-            Float f8 = cpuTemperature1("cat /sys/class/thermal/thermal_zone10/temp");
-
-            System.out.println(f1);
-
-            String temps3 = f1.toString() + "\t" + f2.toString() + "\t" + f3.toString() + "\t" + f4.toString() + "\t" +
-                    f5.toString() + "\t" + f6.toString() + "\t" + f7.toString() + "\t" + f8.toString() + "\t";
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                writeToFile(temps3+"\n",getContext(),"thread3Temp.txt");
-            }
-
-            //textView2.setText("Thread 3");
-
-
-
-
-
-            total3+=l3;
-            i3+=1;
-
-            if( i3 == 10 ) {
-                avg3 = total3/10;
-                //String string = total2.toString();
-
-                //textView3.setText("Float: " + string);
-                i3=0;
-                total3=0l;
-
-            }
-
-
-            String text3 = "Thread 3 " + Double.toString(avg3);
-            textView2.setText(text3);
-        }
-
-        else {
-            System.out.println("Thread 4 classifying");
-
-            textToShow4 = new SpannableStringBuilder();
-
-            Bitmap bitmap4 = textureView.getBitmap(classifier4.getImageSizeX(), classifier4.getImageSizeY());
-            Long l4 = classifier4.classifyFrame(bitmap4, textToShow4,thread_name);
-            bitmap4.recycle();
-            showToast(textToShow4);
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                writeToFile(l4.toString()+"\n",getContext(),"thread4.txt");
-            }
-
-            Float f1 = cpuTemperature1("cat /sys/class/thermal/thermal_zone1/temp");
-            Float f2 = cpuTemperature1("cat /sys/class/thermal/thermal_zone2/temp");
-            Float f3 = cpuTemperature1("cat /sys/class/thermal/thermal_zone3/temp");
-            Float f4 = cpuTemperature1("cat /sys/class/thermal/thermal_zone4/temp");
-            Float f5 = cpuTemperature1("cat /sys/class/thermal/thermal_zone7/temp");
-            Float f6 = cpuTemperature1("cat /sys/class/thermal/thermal_zone8/temp");
-            Float f7 = cpuTemperature1("cat /sys/class/thermal/thermal_zone9/temp");
-            Float f8 = cpuTemperature1("cat /sys/class/thermal/thermal_zone10/temp");
-
-            System.out.println(f1);
-
-            String temps4 = f1.toString() + "\t" + f2.toString() + "\t" + f3.toString() + "\t" + f4.toString() + "\t" +
-                    f5.toString() + "\t" + f6.toString() + "\t" + f7.toString() + "\t" + f8.toString() + "\t";
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                writeToFile(temps4+"\n",getContext(),"thread4Temp.txt");
-            }
-
-            //textView2.setText("Thread 4");
-
-            total4+=l4;
-            i4+=1;
-
-            if( i4 == 10 ) {
-                avg4 = total4/10;
-                //String string = total2.toString();
-
-                //textView3.setText("Float: " + string);
-                i4=0;
-                total4=0l;
-
-            }
-
-
-            String text4= "Thread 4 " + Double.toString(avg4);
-            textView2.setText(text4);
-        }
-
-        //TextUtils.concat(textToShow, textToShow2);
-        //showToast(textToShow + textToShow2);
-
-        Float f1 = cpuTemperature1("cat /sys/class/thermal/thermal_zone1/temp");
-        Float f2 = cpuTemperature1("cat /sys/class/thermal/thermal_zone2/temp");
-        Float f3 = cpuTemperature1("cat /sys/class/thermal/thermal_zone3/temp");
-        Float f4 = cpuTemperature1("cat /sys/class/thermal/thermal_zone4/temp");
-        Float f5 = cpuTemperature1("cat /sys/class/thermal/thermal_zone7/temp");
-        Float f6 = cpuTemperature1("cat /sys/class/thermal/thermal_zone8/temp");
-        Float f7 = cpuTemperature1("cat /sys/class/thermal/thermal_zone9/temp");
-        Float f8 = cpuTemperature1("cat /sys/class/thermal/thermal_zone10/temp");
-
-        System.out.println(f1);
-
-        String temps = f1.toString() + "\t" + f2.toString() + "\t" + f3.toString() + "\t" + f4.toString() + "\t" +
-                f5.toString() + "\t" + f6.toString() + "\t" + f7.toString() + "\t" + f8.toString() + "\t";
-
-        textView4.setText( temps);
-
-
-
-    }
 
 
     private void classifyFrame2(String thread_name, ImageClassifier classifierNow) throws IOException {
 
-        Log.d("Thread Name", thread_name);
+        Log.d("Thread Name ", thread_name + "  " + SystemClock.uptimeMillis() );
 
         Context context1;
 
@@ -4390,7 +3084,7 @@ public class Camera2BasicFragment extends Fragment
 
 
 
-        Long l2 = classifierNow.classifyFrame(resizedBitmap, textToShow2,thread_name);
+        Long l2 = classifierNow.classifyFrame(resizedBitmap, textToShow2,thread_name,2);
         resizedBitmap.recycle();
 
 
@@ -4399,21 +3093,11 @@ public class Camera2BasicFragment extends Fragment
         i2+=1;
 
 
-        if( i2 == 10 ) {
-            avg2 = total2/10.0;
-            //String string = total2.toString();
-
-
-            //textView3.setText("Thread 2: " + string);
-            i2=0;
-            total2=0l;
-
-        }
 
         showToast(textToShow2);
 
         String text2 = "Thread 2 " + Double.toString(avg2);
-        textView2.setText(text2);
+        //textView2.setText(text2);
 
 
         Float f1 = cpuTemperature1("cat /sys/class/thermal/thermal_zone1/temp");
@@ -4429,8 +3113,6 @@ public class Camera2BasicFragment extends Fragment
 
         String temps = f1.toString() + "\t" + Float.toString(f2) + "\t" + f3.toString() + "\t" + f4.toString() + "\t" +
                 f5.toString() + "\t" + f6.toString() + "\t" + f7.toString() + "\t" + f8.toString() + "\t";
-
-        textView4.setText( temps);
 
 
 

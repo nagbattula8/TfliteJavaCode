@@ -157,13 +157,13 @@ public abstract class ImageClassifier {
 
 
   /** Classifies a frame from the preview stream. */
-  Long classifyFrame(Bitmap bitmap, SpannableStringBuilder builder,String thread_name) {
+  Long classifyFrame(Bitmap bitmap, SpannableStringBuilder builder,String thread_name, int batchSize) {
     if (tflite == null) {
       Log.e(TAG, "Image classifier has not been initialized; Skipped.");
       builder.append(new SpannableString("Uninitialized Classifier."));
     }
 
-    tentative_batch_size = 1;
+    tentative_batch_size = batchSize;
 
     imgData =
             ByteBuffer.allocateDirect(
