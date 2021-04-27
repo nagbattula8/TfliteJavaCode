@@ -1,4 +1,7 @@
             for ( int i = 0; i < timings[timings.length-1]+200; i++ ) {
+
+                TimeUnit.MILLISECONDS.sleep(1);
+
                 if ( j == models.length ) {
                     break;
                 }
@@ -16,7 +19,7 @@
 
 
                 while( i == timings[j] ) {
-                    TimeUnit.MILLISECONDS.sleep(1);
+
                     int cpuTotal;
                     int gpuTotal;
                     int dspTotal;
@@ -36,18 +39,24 @@
                             cpu_exec_current=cpuTotal;
 
                             System.out.println("Arrival = " + timings[j] + " Model = " + models[j] + " Device = CPU" + " Execution time " + cpu_exec_current + " " + j);
+
+                            backgroundHandler.post(periodicClassifyForThreadInceptionV1Cpu);
                         }
 
                         else if ( gpuTotal <= cpuTotal && gpuTotal <= dspTotal ) {
                             gpu_exec_current=gpuTotal;
 
                             System.out.println("Arrival = " + timings[j] + " Model = " + models[j] + " Device = GPU" + " Execution time " + gpu_exec_current + " " + j);
+
+                            backgroundHandler.post(periodicClassifyForThreadinceptionV1Gpu);
                         }
 
                         else if ( dspTotal <= cpuTotal && dspTotal <= gpuTotal ) {
                             dsp_exec_current=dspTotal;
 
                             System.out.println( "Arrival = " + timings[j] + " Model = " + models[j] + " Device = DSP" + " Execution time " + dsp_exec_current + " " + j);
+
+                            backgroundHandler.post(periodicClassifyForThreadinceptionV1Dsp);
                         }
 
 
@@ -63,18 +72,24 @@
                             cpu_exec_current=cpuTotal;
 
                             System.out.println("Arrival = " + timings[j] + " Model = " + models[j] + " Device = CPU" + " Execution time " + cpu_exec_current + " " + j);
+
+                            backgroundHandler.post(periodicClassifyForThreadInceptionV3Cpu);
                         }
 
                         else if ( gpuTotal <= cpuTotal && gpuTotal <= dspTotal ) {
                             gpu_exec_current=gpuTotal;
 
                             System.out.println("Arrival = " + timings[j] + " Model = " + models[j] + " Device = GPU" + " Execution time " + gpu_exec_current + " " + j);
+
+                            backgroundHandler.post(periodicClassifyForThreadInceptionV3Gpu);
                         }
 
                         else if ( dspTotal <= cpuTotal && dspTotal <= gpuTotal ) {
                             dsp_exec_current=dspTotal;
 
                             System.out.println( "Arrival = " + timings[j] + " Model = " + models[j] + " Device = DSP" + " Execution time " + dsp_exec_current + " " + j );
+
+                            backgroundHandler.post(periodicClassifyForThreadinceptionV3Dsp);
                         }
 
 
@@ -90,18 +105,24 @@
                             cpu_exec_current=cpuTotal;
 
                             System.out.println("Arrival = " + timings[j] + " Model = " + models[j] + " Device = CPU" + " Execution time " + cpu_exec_current + " " + j );
+
+                            backgroundHandler.post(periodicClassifyForThreadMobilenetV1Cpu);
                         }
 
                         else if ( gpuTotal <= cpuTotal && gpuTotal <= dspTotal ) {
                             gpu_exec_current=gpuTotal;
 
                             System.out.println("Arrival = " + timings[j] + " Model = " + models[j] + " Device = GPU" + " Execution time " + gpu_exec_current + " " + j );
+
+                            backgroundHandler.post(periodicClassifyForThreadMobilenetV1Gpu);
                         }
 
                         else if ( dspTotal <= cpuTotal && dspTotal <= gpuTotal ) {
                             dsp_exec_current=dspTotal;
 
                             System.out.println( "Arrival = " + timings[j] + " Model = " + models[j] + " Device = DSP" + " Execution time " + dsp_exec_current + " " + j);
+
+                            backgroundHandler.post(periodicClassifyForThreadMobilenetV1Dsp);
                         }
 
                     }
@@ -115,18 +136,24 @@
                             cpu_exec_current=cpuTotal;
 
                             System.out.println("Arrival = " + timings[j] + " Model = " + models[j] + " Device = CPU" + " Execution time " + cpu_exec_current + " " + j);
+
+                            backgroundHandler.post(periodicClassifyForThreadMobilenetV2Cpu);
                         }
 
                         else if ( gpuTotal <= cpuTotal && gpuTotal <= dspTotal ) {
                             gpu_exec_current=gpuTotal;
 
                             System.out.println("Arrival = " + timings[j] + " Model = " + models[j] + " Device = GPU" + " Execution time " + gpu_exec_current+ " " + j);
+
+                            backgroundHandler.post(periodicClassifyForThreadMobilenetV2Gpu);
                         }
 
                         else if ( dspTotal <= cpuTotal && dspTotal <= gpuTotal ) {
                             dsp_exec_current=dspTotal;
 
                             System.out.println( "Arrival = " + timings[j] + " Model = " + models[j] + " Device = DSP" + " Execution time " + dsp_exec_current+ " " + j);
+
+                            backgroundHandler.post(periodicClassifyForThreadMobilenetV2Dsp);
                         }
 
                     }

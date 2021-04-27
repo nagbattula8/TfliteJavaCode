@@ -100,9 +100,7 @@ public class ImageClassifierInceptionV1Quant extends ImageClassifier {
 
     @Override
     protected void runInference2(int tentative) {
-
-        if ( labelProbArray == null )
-            labelProbArray = new byte[tentative][getNumLabels()];
+         labelProbArray = new byte[tentative][getNumLabels()];
 
 
         Tensor t1 = tflite.getInputTensor(0);

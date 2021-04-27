@@ -103,7 +103,6 @@ public class ImageClassifierFloatMobileNet extends ImageClassifier {
   @Override
   protected void runInference2(int tentative) {
 
-    if (labelProbArray == null)
       labelProbArray = new float[tentative][getNumLabels()];
 
 

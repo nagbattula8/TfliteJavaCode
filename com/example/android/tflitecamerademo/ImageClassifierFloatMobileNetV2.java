@@ -103,9 +103,8 @@ public class ImageClassifierFloatMobileNetV2 extends ImageClassifier {
     @Override
     protected void runInference2(int tentative) {
 
-        if ( labelProbArray == null ){
             labelProbArray = new float[1][getNumLabels()*tentative];
-        }
+
 
         Tensor t1 = tflite.getInputTensor(0);
 

@@ -35,6 +35,10 @@ public class ImageClassifierFloatInception extends ImageClassifier {
    * of the super class, because we need a primitive array here.
    */
   private float[][] labelProbArray = null;
+  private float[][] labelProbArray2 = null;
+  private float[][] labelProbArray3= null;
+  private float[][] labelProbArray4 = null;
+  private float[][] labelProbArray5 = null;
 
   /**
    * Initializes an {@code ImageClassifierFloatMobileNet}.
@@ -43,6 +47,11 @@ public class ImageClassifierFloatInception extends ImageClassifier {
    */
   ImageClassifierFloatInception(Activity activity) throws IOException {
     super(activity);
+    labelProbArray = new float[1][getNumLabels()];
+    labelProbArray2 = new float[2][getNumLabels()];
+    labelProbArray3 = new float[3][getNumLabels()];
+    labelProbArray4 = new float[4][getNumLabels()];
+    labelProbArray5 = new float[5][getNumLabels()];
   }
 
   @Override
@@ -104,9 +113,6 @@ public class ImageClassifierFloatInception extends ImageClassifier {
   protected void runInference2(int tentative) {
 
 
-    if (labelProbArray == null)
-      labelProbArray = new float[tentative][getNumLabels()];
-
     Tensor t1 = tflite.getInputTensor(0);
 
     int[] dims = t1.shape();
@@ -131,9 +137,27 @@ public class ImageClassifierFloatInception extends ImageClassifier {
     }
 
 
+    if( tentative == 1 ) {
+      tflite.run(imgData, labelProbArray);
+    }
+
+    else if( tentative == 2 ) {
+      tflite.run(imgData, labelProbArray2);
+    }
+
+    else if( tentative == 3 ) {
+      tflite.run(imgData, labelProbArray3);
+    }
+
+    else if( tentative == 4 ) {
+      tflite.run(imgData, labelProbArray4);
+    }
+
+    else if( tentative == 5 ) {
+      tflite.run(imgData, labelProbArray5);
+    }
 
 
-    tflite.run(imgData, labelProbArray);
   }
 
 }

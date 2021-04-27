@@ -157,7 +157,7 @@ public abstract class ImageClassifier {
 
 
   /** Classifies a frame from the preview stream. */
-  Long classifyFrame(Bitmap bitmap, SpannableStringBuilder builder,String thread_name, int batchSize) {
+  Long classifyFrame(Bitmap bitmap, SpannableStringBuilder builder,String thread_name, int batchSize, long start) {
     if (tflite == null) {
       Log.e(TAG, "Image classifier has not been initialized; Skipped.");
       builder.append(new SpannableString("Uninitialized Classifier."));
@@ -200,7 +200,7 @@ public abstract class ImageClassifier {
     Date date = new Date();
     System.out.println();
 
-    Log.d(TAG, "Timecost to run model inference: " + fullName + "    " + Long.toString(endTime - startTime) + " " + formatter.format(date) );
+    Log.d(TAG, "Thread 2 Timecost to run model inference: " + fullName + "    " + Long.toString(endTime - startTime) + " " + formatter.format(date) + " " + (endTime - start) );
 
 
 
@@ -222,7 +222,7 @@ public abstract class ImageClassifier {
 
     Log.d(TAG, "Timecost to put labels: " + model_name + "    " + Long.toString(timeCostToPutLabel));
 
-    return endTime-startTime;
+    return endTime-start;
   }
 
   void applyFilter() {

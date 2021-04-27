@@ -55,6 +55,7 @@ import android.os.HardwarePropertiesManager;
 import android.os.Process;
 import android.os.SystemClock;
 import android.support.annotation.NonNull;
+import android.support.annotation.RequiresApi;
 import android.support.v13.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.text.SpannableString;
@@ -113,6 +114,10 @@ public class Camera2BasicFragment extends Fragment
     private static final int PERMISSIONS_REQUEST_CODE = 1;
 
     int size_to_consider;
+
+    Bitmap bmFrame;
+
+    Bitmap resizedBitmap;
 
 
     private final Object lock = new Object();
@@ -427,6 +432,9 @@ public class Camera2BasicFragment extends Fragment
 
 
     private void loadModel(String model, String device ) {
+
+        runClassifier = true;
+        runClassifier2 = true;
 
         if ( model.equals("inception_v1")) {
 
@@ -968,6 +976,11 @@ public class Camera2BasicFragment extends Fragment
 
                     mediaMetadataRetriever.setDataSource(uri);
 
+                    bmFrame = mediaMetadataRetriever.getFrameAtTime(10000);
+
+                    resizedBitmap = Bitmap.createScaledBitmap(
+                            bmFrame, 224, 224, false);
+
 
 
 
@@ -982,6 +995,8 @@ public class Camera2BasicFragment extends Fragment
         startButton2.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+
+                execList.clear();
                 start2();
             }
         });
@@ -1295,6 +1310,9 @@ public class Camera2BasicFragment extends Fragment
     TimerTask mTt2;
     Handler mTimerHandler2 = new Handler();
 
+    List<String> execList = new ArrayList<String>();
+
+
     Timer mTimer3;
     TimerTask mTt3;
     Handler mTimerHandler3 = new Handler();
@@ -1443,6 +1461,7 @@ public class Camera2BasicFragment extends Fragment
 
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.M)
     private void start2() {
 
 
@@ -1462,10 +1481,6 @@ public class Camera2BasicFragment extends Fragment
         backgroundHandler3 = new Handler(backgroundThread3.getLooper());
 
         // Start the classification train & load an initial model.
-        synchronized (lock) {
-            runClassifier = true;
-        }
-
 
 
         try {
@@ -1664,6 +1679,10 @@ public class Camera2BasicFragment extends Fragment
             List<String> q = new ArrayList<String>();
 
             List<Integer> arrivals = new ArrayList<>();
+            List<Integer> arrivalsiv1 = new ArrayList<>();
+            List<Integer> arrivalsiv3 = new ArrayList<>();
+            List<Integer> arrivalsmv1 = new ArrayList<>();
+            List<Integer> arrivalsmv2 = new ArrayList<>();
 
             int queueSize = 5; //Wait time before running a model's instance
 
@@ -1678,13 +1697,14 @@ public class Camera2BasicFragment extends Fragment
                 q.add("no");
             }
 
-            j = 0;
 
-            //baseline
+            //baseline or online scheduler code
 
             for ( int i = 0; i < timings[timings.length-1]+200; i++ ) {
 
-               TimeUnit.MILLISECONDS.sleep(1);
+                System.out.println("Time now in ms " + SystemClock.uptimeMillis());
+
+                TimeUnit.MILLISECONDS.sleep(1);
 
                 //Printing current loads in the devices
 
@@ -1747,7 +1767,7 @@ public class Camera2BasicFragment extends Fragment
 
                     //Printing the logs
 
-                    System.out.println("iModel = " + inception_queue_element + " Arrival_time = "+ first_arrival_latest + " Wait_time " + (temp_wait_time));
+//                    System.out.println("iModel = " + inception_queue_element + " Arrival_time = "+ first_arrival_latest + " Wait_time " + (temp_wait_time));
 
                     System.out.println("Queue element \t " + inception_queue_element);
 
@@ -1764,7 +1784,7 @@ public class Camera2BasicFragment extends Fragment
                         inception_v1_queue.remove(inception_queue_element);
 
 
-                        System.out.println("iModel = " + inception_queue_element + " Arrival_time = "+ (first_arrival_latest + indexElement + batchSize) + " Wait_time " + (temp_wait_time - indexElement-1));
+//                        System.out.println("iModel = " + inception_queue_element + " Arrival_time = "+ (first_arrival_latest + indexElement) + " Wait_time " + (temp_wait_time - indexElement-1));
 
                         inception_v1_queue.add("no");
                         batchSize += 1;
@@ -1775,7 +1795,9 @@ public class Camera2BasicFragment extends Fragment
 
 
 
-                    int modelArrival = arrivals.remove(0);
+                    int modelArrival = arrivalsiv1.remove(0);
+
+                    System.out.println("Eppudu ra arrival inception_v1 " + modelArrival);
 
                     int cpuTotal = (int)(batch_execs_cpu_inception_v1[batchSize-1]/1000);
 
@@ -1813,13 +1835,24 @@ public class Camera2BasicFragment extends Fragment
                         processorNow = processorNow.concat("CPU");
 
                         cpu_exec_current+=cpuTotalCopy;
-                        size_to_consider = batchSize;
-                        System.out.println("iModel = " + inception_queue_element + " Batch size = " + batchSize + " Arrival_time = "+ first_arrival_latest + " Wait_time " + (temp_wait_time-1) +" Execution time = " + cpu_exec_current + " Processor = " + processorNow);
+                        System.out.println("iModel = " + inception_queue_element + " Batch size = " + batchSize + " Arrival_time = "+ modelArrival + " Wait_time " + (temp_wait_time-1) +" Execution time = " + cpu_exec_current + " Processor = " + processorNow);
 
                         isLoadedInception[0] = true;
 
+                        switch (batchSize) {
+                            case 1:backgroundHandler.post(periodicClassifyForThreadInceptionV1Cpu); // Run model
+                                break;
+                            case 2:backgroundHandler.post(periodicClassifyForThreadInceptionV1Cpu2); // Run model
+                                break;
+                            case 3:backgroundHandler.post(periodicClassifyForThreadInceptionV1Cpu3); // Run model
+                                break;
+                            case 4:backgroundHandler.post(periodicClassifyForThreadInceptionV1Cpu4); // Run model
+                                break;
+                            case 5:backgroundHandler.post(periodicClassifyForThreadInceptionV1Cpu5); // Run model
+                                break;
+                        }
 
-                        backgroundHandler.post(periodicClassifyForThreadInceptionV1Cpu); // Run model
+
 
                     }
 
@@ -1828,11 +1861,29 @@ public class Camera2BasicFragment extends Fragment
                     else if ( gpuTotal <= cpuTotal && gpuTotal <= dspTotal ) {
                         processorNow = processorNow.concat("GPU");
                         gpu_exec_current+=gpuTotalCopy;
-                        size_to_consider = batchSize;
                         System.out.println("iModel = " + inception_queue_element + " Batch size = " + batchSize + " Arrival_time = "+ first_arrival_latest + " Wait_time " + (temp_wait_time-1) +" Execution time = " + gpu_exec_current + " Processor = " + processorNow );
 
                         isLoadedInception[1] = true;
-                      backgroundHandler.post(periodicClassifyForThreadinceptionV1Gpu);
+
+                        switch (batchSize ){
+                            case 1:
+                                backgroundHandler.post(periodicClassifyForThreadinceptionV1Gpu);
+                                break;
+                            case 2:
+                                backgroundHandler.post(periodicClassifyForThreadinceptionV1Gpu2);
+                                break;
+                            case 3:
+                                backgroundHandler.post(periodicClassifyForThreadinceptionV1Gpu3);
+                                break;
+                            case 4:
+                                backgroundHandler.post(periodicClassifyForThreadinceptionV1Gpu4);
+                                break;
+                            case 5:
+                                backgroundHandler.post(periodicClassifyForThreadinceptionV1Gpu5);
+                                break;
+                        }
+
+                        backgroundHandler.post(periodicClassifyForThreadinceptionV1Gpu);
                     }
 //
                     //Execute on DSP
@@ -1842,8 +1893,27 @@ public class Camera2BasicFragment extends Fragment
 
                         System.out.println("iModel = " + inception_queue_element + " Batch size = " + batchSize + " Arrival_time = "+ first_arrival_latest + " Wait_time " + (temp_wait_time-1)+" Execution time = " + dsp_exec_current + " Processor = " + processorNow);
                         isLoadedInception[2] = true;
-                        size_to_consider = batchSize;
-                      backgroundHandler.post(periodicClassifyForThreadinceptionV1Dsp);
+
+                        switch (batchSize) {
+                            case 1:
+                                backgroundHandler.post(periodicClassifyForThreadinceptionV1Dsp);
+                                break;
+                            case 2:
+                                backgroundHandler.post(periodicClassifyForThreadinceptionV1Dsp2);
+                                break;
+                            case 3:
+                                backgroundHandler.post(periodicClassifyForThreadinceptionV1Dsp3);
+                                break;
+                            case 4:
+                                backgroundHandler.post(periodicClassifyForThreadinceptionV1Dsp4);
+                                break;
+                            case 5:
+                                backgroundHandler.post(periodicClassifyForThreadinceptionV1Dsp5);
+                                break;
+
+                        }
+
+
                     }
 
 
@@ -1878,6 +1948,8 @@ public class Camera2BasicFragment extends Fragment
 
 
                     int modelArrival = arrivals.remove(0);
+
+
 
                     int cpuTotal = (int)(batch_execs_cpu_inception_v1[batchSize-1]/1000);
 
@@ -1961,7 +2033,7 @@ public class Camera2BasicFragment extends Fragment
 
                     int first_arrival_latest2 = (i-queueSize);
 
-                    System.out.println("iModel = " + inception_v3_queue_element + " Arrival_time = "+ first_arrival_latest2 + " Wait_time " + (temp_wait_time));
+//                    System.out.println("iModel = " + inception_v3_queue_element + " Arrival_time = "+ first_arrival_latest2 + " Wait_time " + (temp_wait_time));
 
 
                     System.out.println("Queue element \t " + inception_v3_queue_element);
@@ -1974,7 +2046,7 @@ public class Camera2BasicFragment extends Fragment
                         int indexElement = inception_v3_queue.indexOf(inception_v3_queue_element);
                         inception_v3_queue.remove(inception_v3_queue_element);
 
-                        System.out.println("iModel = " + inception_v3_queue_element + " Arrival_time = "+ (first_arrival_latest2 + indexElement + batchSize) + " Wait_time " + (temp_wait_time - indexElement-1));
+//                        System.out.println("iModel = " + inception_v3_queue_element + " Arrival_time = "+ (first_arrival_latest2 + indexElement ) + " Wait_time " + (temp_wait_time - indexElement-1));
 
 
                         inception_v3_queue.add("no");
@@ -1986,7 +2058,9 @@ public class Camera2BasicFragment extends Fragment
 
 
 
-                    int modelArrival = arrivals.remove(0);
+                    int modelArrival = arrivalsiv3.remove(0);
+
+                    System.out.println("Eppudu ra arrival inception_v3 " + modelArrival);
 
                     int cpuTotal = (int)(batch_execs_cpu_inception_v3[batchSize-1]/1000);
 
@@ -2022,13 +2096,30 @@ public class Camera2BasicFragment extends Fragment
                     if ( cpuTotal <= gpuTotal && cpuTotal <= dspTotal) { //Execute on CPU
                         processorNow = processorNow.concat("CPU");
                         cpu_exec_current+=cpuTotalCopy;
-                        size_to_consider = batchSize;
+
+
                         System.out.println("iModel = " + inception_v3_queue_element +" Batch size = " + batchSize + " Arrival_time = "+ first_arrival_latest2 + " Wait_time " + (temp_wait_time-1) +" Execution time = " + cpu_exec_current + " Processor = " + processorNow );
 
 
+                        switch (batchSize){
+                            case 1:
+                                backgroundHandler.post(periodicClassifyForThreadInceptionV3Cpu);
+                                break;
+                            case 2:
+                                backgroundHandler.post(periodicClassifyForThreadInceptionV3Cpu2);
+                                break;
+                            case 3:
+                                backgroundHandler.post(periodicClassifyForThreadInceptionV3Cpu3);
+                                break;
+                            case 4:
+                                backgroundHandler.post(periodicClassifyForThreadInceptionV3Cpu4);
+                                break;
+                            case 5:
+                                backgroundHandler.post(periodicClassifyForThreadInceptionV3Cpu5);
+                                break;
+                        }
                         //loadModel("inception_v3",processorNow);
                         isLoadedInceptionV3[0] = true;
-                        backgroundHandler.post(periodicClassifyForThreadInceptionV3Cpu);
 
                     }
 
@@ -2044,7 +2135,25 @@ public class Camera2BasicFragment extends Fragment
 
                         isLoadedInceptionV3[1] = true;
 
-                        backgroundHandler.post(periodicClassifyForThreadInceptionV3Gpu);
+                        switch (batchSize) {
+                            case 1:backgroundHandler.post(periodicClassifyForThreadInceptionV3Gpu);
+                                break;
+                            case 2:
+                                backgroundHandler.post(periodicClassifyForThreadInceptionV3Gpu2);
+                                break;
+                            case 3:
+                                backgroundHandler.post(periodicClassifyForThreadInceptionV3Gpu3);
+                                break;
+                            case 4:
+                                backgroundHandler.post(periodicClassifyForThreadInceptionV3Gpu4);
+                                break;
+                            case 5:
+                                backgroundHandler.post(periodicClassifyForThreadInceptionV3Gpu5);
+                                break;
+
+                        }
+
+
 
                     }
 
@@ -2059,7 +2168,26 @@ public class Camera2BasicFragment extends Fragment
 
                         isLoadedInceptionV3[2]  = true;
 
-                        backgroundHandler.post(periodicClassifyForThreadinceptionV3Dsp);
+                        switch (batchSize) {
+                            case 1:
+                                backgroundHandler.post(periodicClassifyForThreadinceptionV3Dsp);
+                                break;
+                            case 2:
+                                backgroundHandler.post(periodicClassifyForThreadinceptionV3Dsp2);
+                                break;
+                            case 3:
+                                backgroundHandler.post(periodicClassifyForThreadinceptionV3Dsp3);
+                                break;
+                            case 4:
+                                backgroundHandler.post(periodicClassifyForThreadinceptionV3Dsp4);
+                                break;
+                            case 5:
+                                backgroundHandler.post(periodicClassifyForThreadinceptionV3Dsp5);
+                                break;
+
+                        }
+
+
 
                     }
 
@@ -2084,7 +2212,7 @@ public class Camera2BasicFragment extends Fragment
 
 //                    System.out.println("Model = " + mobilenet_queue_element + " Arrival_time = "+ first_arrival_latest3 + " Wait_time " + (temp_wait_time-1));
 
-                    System.out.println("iModel = " + mobilenet_queue_element + " Arrival_time = "+ first_arrival_latest3 + " Wait_time " + (temp_wait_time));
+//                    System.out.println("iModel = " + mobilenet_queue_element + " Arrival_time = "+ first_arrival_latest3 + " Wait_time " + (temp_wait_time) + "  "+ i);
 
                     //inception_v1_queue.add("no");
 
@@ -2097,13 +2225,15 @@ public class Camera2BasicFragment extends Fragment
                         int indexElement = mobilenet_v1_queue.indexOf(mobilenet_queue_element);
 
                         mobilenet_v1_queue.remove(mobilenet_queue_element);
-                        System.out.println("iModel = " + mobilenet_queue_element + " Arrival_time = "+ (first_arrival_latest3 + indexElement + batchSize) + " Wait_time " + (temp_wait_time - indexElement-1));
+//                        System.out.println("iModel = " + mobilenet_queue_element + " Arrival_time = "+ (first_arrival_latest3 + indexElement ) + " Wait_time " + (temp_wait_time - indexElement-1));
 
                         mobilenet_v1_queue.add("no");
                         batchSize += 1;
                     }
 
-                    int modelArrival = arrivals.remove(0);
+                    int modelArrival = arrivalsmv1.remove(0);
+
+                    System.out.println("Eppudu ra arrival mobilenet_v1 " + modelArrival);
 
                     int cpuTotal = (int)(batch_execs_cpu_mobilenet_v1[batchSize-1]/1000);
 
@@ -2147,7 +2277,28 @@ public class Camera2BasicFragment extends Fragment
                         System.out.println("iModel = " + mobilenet_queue_element + " Batch size = " + batchSize + " Arrival_time = "+ first_arrival_latest3 + " Wait_time " + (temp_wait_time-1) +" Execution time = " + cpu_exec_current + " Processor = " + processorNow);
 
                         isLoadedMobileNet[0]  = true;
-                        backgroundHandler.post(periodicClassifyForThreadMobilenetV1Cpu);
+
+                        switch (batchSize) {
+                            case 1:
+                                backgroundHandler.post(periodicClassifyForThreadMobilenetV1Cpu);
+                                break;
+                            case 2:
+                                backgroundHandler.post(periodicClassifyForThreadMobilenetV1Cpu2);
+                                break;
+                            case 3:
+                                backgroundHandler.post(periodicClassifyForThreadMobilenetV1Cpu3);
+                                break;
+                            case 4:
+                                backgroundHandler.post(periodicClassifyForThreadMobilenetV1Cpu4);
+                                break;
+                            case 5:
+                                backgroundHandler.post(periodicClassifyForThreadMobilenetV1Cpu5);
+                                break;
+
+                        }
+
+
+
 
                     }
 
@@ -2158,7 +2309,26 @@ public class Camera2BasicFragment extends Fragment
                         System.out.println("iModel = " + mobilenet_queue_element + " Batch size = " + batchSize + " Arrival_time = "+ first_arrival_latest3 + " Wait_time " + (temp_wait_time-1) +" Execution time = " + gpu_exec_current + " Processor = " + processorNow );
 
                         isLoadedMobileNet[1] = true;
-                        backgroundHandler.post(periodicClassifyForThreadMobilenetV1Gpu);
+                        switch (batchSize) {
+                            case 1:
+                                backgroundHandler.post(periodicClassifyForThreadMobilenetV1Gpu);
+                                break;
+                            case 2:
+                                backgroundHandler.post(periodicClassifyForThreadMobilenetV1Gpu2);
+                                break;
+                            case 3:
+                                backgroundHandler.post(periodicClassifyForThreadMobilenetV1Gpu3);
+                                break;
+                            case 4:
+                                backgroundHandler.post(periodicClassifyForThreadMobilenetV1Gpu4);
+                                break;
+                            case 5:
+                                backgroundHandler.post(periodicClassifyForThreadMobilenetV1Gpu5);
+                                break;
+
+                        }
+
+
 
                     }
                     else { //Execute on DSP
@@ -2171,7 +2341,26 @@ public class Camera2BasicFragment extends Fragment
                         //loadModel("mobilenet_v1",processorNow);
 
                         isLoadedMobileNet[2] = true;
-                        backgroundHandler.post(periodicClassifyForThreadMobilenetV1Dsp);
+
+                        switch (batchSize) {
+                            case 1:
+                                backgroundHandler.post(periodicClassifyForThreadMobilenetV1Dsp);
+                                break;
+                            case 2:
+                                backgroundHandler.post(periodicClassifyForThreadMobilenetV1Dsp2);
+                                break;
+                            case 3:
+                                backgroundHandler.post(periodicClassifyForThreadMobilenetV1Dsp3);
+                                break;
+                            case 4:
+                                backgroundHandler.post(periodicClassifyForThreadMobilenetV1Dsp4);
+                                break;
+                            case 5:
+                                backgroundHandler.post(periodicClassifyForThreadMobilenetV1Dsp5);
+                                break;
+
+                        }
+
 
 
                     }
@@ -2199,7 +2388,7 @@ public class Camera2BasicFragment extends Fragment
 
 //                    System.out.println("Model = " + mobilenet_v2_queue_element + " Arrival_time = "+ first_arrival_latest4 + " Wait_time " + (temp_wait_time-1));
 
-                    System.out.println("iModel = " + mobilenet_v2_queue_element + " Arrival_time = "+ first_arrival_latest4 + " Wait_time " + (temp_wait_time));
+//                    System.out.println("iModel = " + mobilenet_v2_queue_element + " Arrival_time = "+ first_arrival_latest4 + " Wait_time " + (temp_wait_time));
 
                     System.out.println("Queue element \t " + mobilenet_v2_queue_element);
 
@@ -2209,7 +2398,7 @@ public class Camera2BasicFragment extends Fragment
 
                         int indexElement = mobilenet_v2_queue.indexOf(mobilenet_v2_queue_element);
                         mobilenet_v2_queue.remove(mobilenet_v2_queue_element);
-                        System.out.println("iModel = " + mobilenet_v2_queue_element + " Arrival_time = "+ (first_arrival_latest4 + indexElement + batchSize) + " Wait_time " + (temp_wait_time - indexElement-1));
+//                        System.out.println("iModel = " + mobilenet_v2_queue_element + " Arrival_time = "+ (first_arrival_latest4 + indexElement) + " Wait_time " + (temp_wait_time - indexElement-1));
 
 
                         mobilenet_v2_queue.add("no");
@@ -2218,7 +2407,11 @@ public class Camera2BasicFragment extends Fragment
 
                     runClassifier2 = true;
 
-                    int modelArrival = arrivals.remove(0);
+
+
+                    int modelArrival = arrivalsmv2.remove(0);
+
+                    System.out.println("Eppudu ra arrival mobilenet_v2 " + modelArrival);
 
                     int cpuTotal = (int)(batch_execs_cpu_mobilenet_v2[batchSize-1]/1000);
 
@@ -2265,7 +2458,26 @@ public class Camera2BasicFragment extends Fragment
                         //loadModel("mobilenet_v2",processorNow);
                         isLoadedMobileNetV2[0] = true;
 
-                        backgroundHandler.post(periodicClassifyForThreadMobilenetV2Cpu);
+                        switch (batchSize) {
+                            case 1:
+                                backgroundHandler.post(periodicClassifyForThreadMobilenetV2Cpu);
+                                break;
+                            case 2:
+                                backgroundHandler.post(periodicClassifyForThreadMobilenetV2Cpu2);
+                                break;
+                            case 3:
+                                backgroundHandler.post(periodicClassifyForThreadMobilenetV2Cpu3);
+                                break;
+                            case 4:
+                                backgroundHandler.post(periodicClassifyForThreadMobilenetV2Cpu4);
+                                break;
+                            case 5:
+                                backgroundHandler.post(periodicClassifyForThreadMobilenetV2Cpu5);
+                                break;
+
+                        }
+
+
 
                     }
 
@@ -2280,7 +2492,24 @@ public class Camera2BasicFragment extends Fragment
 
                         isLoadedMobileNetV2[1] = true;
 
-                        backgroundHandler.post(periodicClassifyForThreadMobilenetV2Gpu);
+                        switch (batchSize) {
+                            case 1:
+                                backgroundHandler.post(periodicClassifyForThreadMobilenetV2Gpu);
+                                break;
+                            case 2:
+                                backgroundHandler.post(periodicClassifyForThreadMobilenetV2Gpu2);
+                                break;
+                            case 3:
+                                backgroundHandler.post(periodicClassifyForThreadMobilenetV2Gpu3);
+                                break;
+                            case 4:
+                                backgroundHandler.post(periodicClassifyForThreadMobilenetV2Gpu4);
+                                break;
+                            case 5:
+                                backgroundHandler.post(periodicClassifyForThreadMobilenetV2Gpu5);
+                                break;
+
+                        }
 
 
                     }
@@ -2294,7 +2523,26 @@ public class Camera2BasicFragment extends Fragment
 
 
                         isLoadedMobileNetV2[2] = true;
-                        backgroundHandler.post(periodicClassifyForThreadMobilenetV2Dsp);
+
+                        switch (batchSize) {
+                            case 1:
+                                backgroundHandler.post(periodicClassifyForThreadMobilenetV2Dsp);
+                                break;
+                            case 2:
+                                backgroundHandler.post(periodicClassifyForThreadMobilenetV2Dsp2);
+                                break;
+                            case 3:
+                                backgroundHandler.post(periodicClassifyForThreadMobilenetV2Dsp3);
+                                break;
+                            case 4:
+                                backgroundHandler.post(periodicClassifyForThreadMobilenetV2Dsp4);
+                                break;
+                            case 5:
+                                backgroundHandler.post(periodicClassifyForThreadMobilenetV2Dsp5);
+                                break;
+
+                        }
+
 
                     }
 
@@ -2324,7 +2572,9 @@ public class Camera2BasicFragment extends Fragment
 
                             if ( models[j].equals("inception_v1")) {
                                 if ( !inception_v1_queue.contains(models[j])) {
-                                    arrivals.add(j);
+                                    arrivals.add(i);
+
+                                    arrivalsiv1.add(i);
                                 }
 
                                 inception_v1_queue.add(models[j]);
@@ -2347,7 +2597,8 @@ public class Camera2BasicFragment extends Fragment
 
 
                                 if ( !inception_v2_queue.contains(models[j])) {
-                                    arrivals.add(j);
+                                    arrivals.add(i);
+                                    arrivalsiv1.add(i);
                                 }
 
                                 inception_v2_queue.add(models[j]);
@@ -2370,7 +2621,8 @@ public class Camera2BasicFragment extends Fragment
                             else if ( models[j].equals("mobilenet_v1")) {
 
                                 if ( !mobilenet_v1_queue.contains(models[j])) {
-                                    arrivals.add(j);
+                                    arrivals.add(i);
+                                    arrivalsmv1.add(i);
                                     mobilenet_v1_queue.add(models[j]);
                                 }
                                 else {
@@ -2394,7 +2646,8 @@ public class Camera2BasicFragment extends Fragment
                             else if ( models[j].equals("mobilenet_v2")) {
 
                                 if ( !mobilenet_v2_queue.contains(models[j])) {
-                                    arrivals.add(j);
+                                    arrivals.add(i);
+                                    arrivalsmv2.add(i);
                                     mobilenet_v2_queue.add(models[j]);
                                 }
                                 else {
@@ -2418,7 +2671,8 @@ public class Camera2BasicFragment extends Fragment
                             else if ( models[j].equals("inception_v3")) {
 
                                 if ( !inception_v3_queue.contains(models[j])) {
-                                    arrivals.add(j);
+                                    arrivals.add(i);
+                                    arrivalsiv3.add(i);
                                     inception_v3_queue.add(models[j]);
                                 }
                                 else {
@@ -2440,7 +2694,10 @@ public class Camera2BasicFragment extends Fragment
                                     inception_v2_queue.add("no");
                             }
 
-                            System.out.println("Exec " + models[j] + " " + i);
+                            System.out.println("iModel Exec " + models[j] + " " + i);
+
+                            execList.add("iModel Exec " + models[j] + " " + i);
+
 
                             j += 1;
                             if ( j == models.length ){
@@ -2463,7 +2720,25 @@ public class Camera2BasicFragment extends Fragment
                 }
 
             }
+
+
+
+
             System.out.println(q.size());
+            System.out.println("All execs " + execList.size());
+
+            String towrite = "";
+
+
+            for ( String str : execList ) {
+                towrite = towrite+str+"\n";
+
+            }
+
+            writeToFile(towrite+"\n",getContext(),"bokkalofile.txt");
+
+
+
 
 
         } catch (Exception e) {
@@ -2514,6 +2789,90 @@ public class Camera2BasicFragment extends Fragment
             new Runnable() {
                 @Override
                 public void run() {
+                    //synchronized (lock) {
+                        if (runClassifier2) {
+                            try {
+
+                                if( inceptionV1Cpu == null ) {
+                                    inceptionV1Cpu = new ImageClassifierInceptionV1Quant(getActivity());
+                                    inceptionV1Cpu.setNumThreads(currentNumThreads);
+
+
+                                }
+                                System.out.println("inceptionV1Cpu" + " " + size_to_consider);
+
+                                classifyFrame2("Thread 2 inception_v1 cpu ",inceptionV1Cpu,1);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    //}
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
+    private Runnable periodicClassifyForThreadInceptionV1Cpu2 =
+            new Runnable() {
+                @Override
+                public void run() {
+                    //synchronized (lock) {
+                        if (runClassifier2) {
+                            try {
+
+                                if( inceptionV1Cpu == null ) {
+                                    inceptionV1Cpu = new ImageClassifierInceptionV1Quant(getActivity());
+                                    inceptionV1Cpu.setNumThreads(currentNumThreads);
+
+
+                                }
+                                System.out.println("inceptionV1Cpu" + " " + size_to_consider);
+
+                                classifyFrame2("Thread 2 inception_v1 cpu ",inceptionV1Cpu,2);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        //}
+                    }
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
+    private Runnable periodicClassifyForThreadInceptionV1Cpu3 =
+            new Runnable() {
+                @Override
+                public void run() {
+                    //synchronized (lock) {
+                        if (runClassifier2) {
+                            try {
+
+                                if( inceptionV1Cpu == null ) {
+                                    inceptionV1Cpu = new ImageClassifierInceptionV1Quant(getActivity());
+                                    inceptionV1Cpu.setNumThreads(currentNumThreads);
+
+
+                                }
+                                System.out.println("inceptionV1Cpu" + " " + size_to_consider);
+
+                                classifyFrame2("Thread 2 inception_v1 cpu ",inceptionV1Cpu,3);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    //}
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
+    private Runnable periodicClassifyForThreadInceptionV1Cpu4 =
+            new Runnable() {
+                @Override
+                public void run() {
                     synchronized (lock) {
                         if (runClassifier2) {
                             try {
@@ -2526,7 +2885,7 @@ public class Camera2BasicFragment extends Fragment
                                 }
                                 System.out.println("inceptionV1Cpu" + " " + size_to_consider);
 
-                                classifyFrame2("Thread 2 iv1cpu ",inceptionV1Cpu);
+                                classifyFrame2("Thread 2 inception_v1 cpu ",inceptionV1Cpu,4);
 
                             } catch (IOException e) {
                                 e.printStackTrace();
@@ -2538,8 +2897,75 @@ public class Camera2BasicFragment extends Fragment
                 }
             };
 
+    private Runnable periodicClassifyForThreadInceptionV1Cpu5 =
+            new Runnable() {
+                @Override
+                public void run() {
+                    //synchronized (lock) {
+                        if (runClassifier2) {
+                            try {
+
+                                if( inceptionV1Cpu == null ) {
+                                    inceptionV1Cpu = new ImageClassifierInceptionV1Quant(getActivity());
+                                    inceptionV1Cpu.setNumThreads(currentNumThreads);
+
+
+                                }
+                                System.out.println("inceptionV1Cpu" + " " + size_to_consider);
+
+                                classifyFrame2("Thread 2 inception_v1 cpu ",inceptionV1Cpu,5);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    //}
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
+
+
+
+
 
     private Runnable periodicClassifyForThreadinceptionV1Gpu =
+            new Runnable() {
+                @Override
+                public void run() {
+                    //synchronized (lock) {
+                        if (runClassifier2) {
+
+
+
+                            try {
+
+                                if( inceptionV1Gpu == null ) {
+                                    inceptionV1Gpu = new ImageClassifierInceptionV1Quant(getActivity());
+                                    inceptionV1Gpu.setNumThreads(currentNumThreads);
+
+                                    inceptionV1Gpu.useGpu();
+
+
+                                }
+
+                                System.out.println("inceptionV1Gpu" + " " + size_to_consider);
+
+
+                                classifyFrame2("Thread 2 inception_v1 gpu ",inceptionV1Gpu,1);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    //}
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
+    private Runnable periodicClassifyForThreadinceptionV1Gpu2 =
             new Runnable() {
                 @Override
                 public void run() {
@@ -2562,7 +2988,112 @@ public class Camera2BasicFragment extends Fragment
                                 System.out.println("inceptionV1Gpu" + " " + size_to_consider);
 
 
-                                classifyFrame2("Thread 2 iv1gpu ",inceptionV1Gpu);
+                                classifyFrame2("Thread 2 inception_v1 gpu ",inceptionV1Gpu,2);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
+    private Runnable periodicClassifyForThreadinceptionV1Gpu3 =
+            new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (lock) {
+                        if (runClassifier2) {
+
+
+
+                            try {
+
+                                if( inceptionV1Gpu == null ) {
+                                    inceptionV1Gpu = new ImageClassifierInceptionV1Quant(getActivity());
+                                    inceptionV1Gpu.setNumThreads(currentNumThreads);
+
+                                    inceptionV1Gpu.useGpu();
+
+
+                                }
+
+                                System.out.println("inceptionV1Gpu" + " " + size_to_consider);
+
+
+                                classifyFrame2("Thread 2 inception_v1 gpu ",inceptionV1Gpu,3);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
+    private Runnable periodicClassifyForThreadinceptionV1Gpu4 =
+            new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (lock) {
+                        if (runClassifier2) {
+
+
+
+                            try {
+
+                                if( inceptionV1Gpu == null ) {
+                                    inceptionV1Gpu = new ImageClassifierInceptionV1Quant(getActivity());
+                                    inceptionV1Gpu.setNumThreads(currentNumThreads);
+
+                                    inceptionV1Gpu.useGpu();
+
+
+                                }
+
+                                System.out.println("inceptionV1Gpu" + " " + size_to_consider);
+
+
+                                classifyFrame2("Thread 2 inception_v1 gpu ",inceptionV1Gpu,4);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
+    private Runnable periodicClassifyForThreadinceptionV1Gpu5 =
+            new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (lock) {
+                        if (runClassifier2) {
+
+
+
+                            try {
+
+                                if( inceptionV1Gpu == null ) {
+                                    inceptionV1Gpu = new ImageClassifierInceptionV1Quant(getActivity());
+                                    inceptionV1Gpu.setNumThreads(currentNumThreads);
+
+                                    inceptionV1Gpu.useGpu();
+
+
+                                }
+
+                                System.out.println("inceptionV1Gpu" + " " + size_to_consider);
+
+
+                                classifyFrame2("Thread 2 inception_v1 gpu ",inceptionV1Gpu,5);
 
                             } catch (IOException e) {
                                 e.printStackTrace();
@@ -2593,7 +3124,133 @@ public class Camera2BasicFragment extends Fragment
                                 }
                                 System.out.println("inceptionV1Dsp" + " " + size_to_consider);
 
-                                classifyFrame2("Thread 2 iv1dsp ",inceptionV1Dsp);
+                                classifyFrame2("Thread 2 inception_v1 dsp ",inceptionV1Dsp,1);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
+    private Runnable periodicClassifyForThreadinceptionV1Dsp2 =
+            new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (lock) {
+                        if (runClassifier2) {
+                            try {
+
+                                if( inceptionV1Dsp == null ) {
+                                    inceptionV1Dsp = new ImageClassifierInceptionV1Quant(getActivity());
+                                    inceptionV1Dsp.setNumThreads(currentNumThreads);
+
+                                    inceptionV1Dsp.useDSP();
+
+
+
+                                }
+                                System.out.println("inceptionV1Dsp" + " " + size_to_consider);
+
+                                classifyFrame2("Thread 2 inception_v1 dsp ",inceptionV1Dsp,2);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
+    private Runnable periodicClassifyForThreadinceptionV1Dsp3 =
+            new Runnable() {
+                @Override
+                public void run() {
+                    //synchronized (lock) {
+                        if (runClassifier2) {
+                            try {
+
+                                if( inceptionV1Dsp == null ) {
+                                    inceptionV1Dsp = new ImageClassifierInceptionV1Quant(getActivity());
+                                    inceptionV1Dsp.setNumThreads(currentNumThreads);
+
+                                    inceptionV1Dsp.useDSP();
+
+
+
+                                }
+                                System.out.println("inceptionV1Dsp" + " " + size_to_consider);
+
+                                classifyFrame2("Thread 2 inception_v1 dsp ",inceptionV1Dsp,3);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    //}
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
+    private Runnable periodicClassifyForThreadinceptionV1Dsp4 =
+            new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (lock) {
+                        if (runClassifier2) {
+                            try {
+
+                                if( inceptionV1Dsp == null ) {
+                                    inceptionV1Dsp = new ImageClassifierInceptionV1Quant(getActivity());
+                                    inceptionV1Dsp.setNumThreads(currentNumThreads);
+
+                                    inceptionV1Dsp.useDSP();
+
+
+
+                                }
+                                System.out.println("inceptionV1Dsp" + " " + size_to_consider);
+
+                                classifyFrame2("Thread 2 inception_v1 dsp ",inceptionV1Dsp,4);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
+
+
+    private Runnable periodicClassifyForThreadinceptionV1Dsp5 =
+            new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (lock) {
+                        if (runClassifier2) {
+                            try {
+
+                                if( inceptionV1Dsp == null ) {
+                                    inceptionV1Dsp = new ImageClassifierInceptionV1Quant(getActivity());
+                                    inceptionV1Dsp.setNumThreads(currentNumThreads);
+
+                                    inceptionV1Dsp.useDSP();
+
+
+
+                                }
+                                System.out.println("inceptionV1Dsp" + " " + size_to_consider);
+
+                                classifyFrame2("Thread 2 inception_v1 dsp ",inceptionV1Dsp,5);
 
                             } catch (IOException e) {
                                 e.printStackTrace();
@@ -2621,7 +3278,34 @@ public class Camera2BasicFragment extends Fragment
                                 }
                                 System.out.println("inceptionV3Cpu" + " " + size_to_consider);
 
-                                classifyFrame2("Thread 2 iv3cpu ",inceptionV3Cpu);
+                                classifyFrame2("Thread 2 inception_v3 cpu ",inceptionV3Cpu,1);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+    private Runnable periodicClassifyForThreadInceptionV3Cpu2 =
+            new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (lock) {
+                        if (runClassifier2) {
+                            try {
+
+                                if( inceptionV3Cpu == null ) {
+                                    inceptionV3Cpu = new ImageClassifierFloatInception(getActivity());
+                                    inceptionV3Cpu.setNumThreads(currentNumThreads);
+
+
+                                }
+                                System.out.println("inceptionV3Cpu" + " " + size_to_consider);
+
+                                classifyFrame2("Thread 2 inception_v3 cpu ",inceptionV3Cpu,2);
 
                             } catch (IOException e) {
                                 e.printStackTrace();
@@ -2633,8 +3317,153 @@ public class Camera2BasicFragment extends Fragment
                 }
             };
 
+    private Runnable periodicClassifyForThreadInceptionV3Cpu3 =
+            new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (lock) {
+                        if (runClassifier2) {
+                            try {
+
+                                if( inceptionV3Cpu == null ) {
+                                    inceptionV3Cpu = new ImageClassifierFloatInception(getActivity());
+                                    inceptionV3Cpu.setNumThreads(currentNumThreads);
+
+
+                                }
+                                System.out.println("inceptionV3Cpu" + " " + size_to_consider);
+
+                                classifyFrame2("Thread 2 inception_v3 cpu ",inceptionV3Cpu,3);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+    private Runnable periodicClassifyForThreadInceptionV3Cpu4 =
+            new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (lock) {
+                        if (runClassifier2) {
+                            try {
+
+                                if( inceptionV3Cpu == null ) {
+                                    inceptionV3Cpu = new ImageClassifierFloatInception(getActivity());
+                                    inceptionV3Cpu.setNumThreads(currentNumThreads);
+
+
+                                }
+                                System.out.println("inceptionV3Cpu" + " " + size_to_consider);
+
+                                classifyFrame2("Thread 2 inception_v3 cpu ",inceptionV3Cpu,4);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
+    private Runnable periodicClassifyForThreadInceptionV3Cpu5 =
+            new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (lock) {
+                        if (runClassifier2) {
+                            try {
+
+                                if( inceptionV3Cpu == null ) {
+                                    inceptionV3Cpu = new ImageClassifierFloatInception(getActivity());
+                                    inceptionV3Cpu.setNumThreads(currentNumThreads);
+
+
+                                }
+                                System.out.println("inceptionV3Cpu" + " " + size_to_consider);
+
+                                classifyFrame2("Thread 2 inception_v3 cpu ",inceptionV3Cpu,5);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+    private Runnable periodicClassifyForThreadInceptionV3Cpu6 =
+            new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (lock) {
+                        if (runClassifier2) {
+                            try {
+
+                                if( inceptionV3Cpu == null ) {
+                                    inceptionV3Cpu = new ImageClassifierFloatInception(getActivity());
+                                    inceptionV3Cpu.setNumThreads(currentNumThreads);
+
+
+                                }
+                                System.out.println("inceptionV3Cpu" + " " + size_to_consider);
+
+                                classifyFrame2("Thread 2 inception_v3 cpu ",inceptionV3Cpu,6);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
 
     private Runnable periodicClassifyForThreadInceptionV3Gpu =
+            new Runnable() {
+                @Override
+                public void run() {
+                    //synchronized (lock) {
+                        if (runClassifier2) {
+
+
+
+                            try {
+
+                                if( inceptionV3Gpu == null ) {
+                                    inceptionV3Gpu = new ImageClassifierFloatInception(getActivity());
+                                    inceptionV3Gpu.setNumThreads(currentNumThreads);
+
+                                    inceptionV3Gpu.useGpu();
+
+
+
+                                }
+
+                                System.out.println("inceptionV3Gpu" + " " + size_to_consider);
+
+
+                                classifyFrame2("Thread 2 inception_v3 gpu ",inceptionV3Gpu,1);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    //}
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
+    private Runnable periodicClassifyForThreadInceptionV3Gpu2 =
             new Runnable() {
                 @Override
                 public void run() {
@@ -2658,7 +3487,115 @@ public class Camera2BasicFragment extends Fragment
                                 System.out.println("inceptionV3Gpu" + " " + size_to_consider);
 
 
-                                classifyFrame2("Thread 2 iv3gpu ",inceptionV3Gpu);
+                                classifyFrame2("Thread 2 inception_v3 gpu ",inceptionV3Gpu,2);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
+    private Runnable periodicClassifyForThreadInceptionV3Gpu3 =
+            new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (lock) {
+                        if (runClassifier2) {
+
+
+
+                            try {
+
+                                if( inceptionV3Gpu == null ) {
+                                    inceptionV3Gpu = new ImageClassifierFloatInception(getActivity());
+                                    inceptionV3Gpu.setNumThreads(currentNumThreads);
+
+                                    inceptionV3Gpu.useGpu();
+
+
+
+                                }
+
+                                System.out.println("inceptionV3Gpu" + " " + size_to_consider);
+
+
+                                classifyFrame2("Thread 2 inception_v3 gpu ",inceptionV3Gpu,3);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
+    private Runnable periodicClassifyForThreadInceptionV3Gpu4 =
+            new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (lock) {
+                        if (runClassifier2) {
+
+
+
+                            try {
+
+                                if( inceptionV3Gpu == null ) {
+                                    inceptionV3Gpu = new ImageClassifierFloatInception(getActivity());
+                                    inceptionV3Gpu.setNumThreads(currentNumThreads);
+
+                                    inceptionV3Gpu.useGpu();
+
+
+
+                                }
+
+                                System.out.println("inceptionV3Gpu" + " " + size_to_consider);
+
+
+                                classifyFrame2("Thread 2 inception_v3 gpu ",inceptionV3Gpu,4);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
+    private Runnable periodicClassifyForThreadInceptionV3Gpu5 =
+            new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (lock) {
+                        if (runClassifier2) {
+
+
+
+                            try {
+
+                                if( inceptionV3Gpu == null ) {
+                                    inceptionV3Gpu = new ImageClassifierFloatInception(getActivity());
+                                    inceptionV3Gpu.setNumThreads(currentNumThreads);
+
+                                    inceptionV3Gpu.useGpu();
+
+
+
+                                }
+
+                                System.out.println("inceptionV3Gpu" + " " + size_to_consider);
+
+
+                                classifyFrame2("Thread 2 inception_v3 gpu ",inceptionV3Gpu,5);
 
                             } catch (IOException e) {
                                 e.printStackTrace();
@@ -2687,7 +3624,123 @@ public class Camera2BasicFragment extends Fragment
                                 }
                                 System.out.println("inceptionV3Dsp" + " " + size_to_consider);
 
-                                classifyFrame2("Thread 2 iv3dsp ",inceptionV3Dsp);
+                                classifyFrame2("Thread 2 inception_v3 dsp ",inceptionV3Dsp,1);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
+    private Runnable periodicClassifyForThreadinceptionV3Dsp2 =
+            new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (lock) {
+                        if (runClassifier2) {
+                            try {
+
+                                if( inceptionV3Dsp == null ) {
+                                    inceptionV3Dsp = new ImageClassifierFloatInception(getActivity());
+                                    inceptionV3Dsp.setNumThreads(currentNumThreads);
+
+                                    inceptionV3Dsp.useDSP();
+
+                                }
+                                System.out.println("inceptionV3Dsp" + " " + size_to_consider);
+
+                                classifyFrame2("Thread 2 inception_v3 dsp ",inceptionV3Dsp,2);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
+    private Runnable periodicClassifyForThreadinceptionV3Dsp3 =
+            new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (lock) {
+                        if (runClassifier2) {
+                            try {
+
+                                if( inceptionV3Dsp == null ) {
+                                    inceptionV3Dsp = new ImageClassifierFloatInception(getActivity());
+                                    inceptionV3Dsp.setNumThreads(currentNumThreads);
+
+                                    inceptionV3Dsp.useDSP();
+
+                                }
+                                System.out.println("inceptionV3Dsp" + " " + size_to_consider);
+
+                                classifyFrame2("Thread 2 inception_v3 dsp ",inceptionV3Dsp,3);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
+    private Runnable periodicClassifyForThreadinceptionV3Dsp4 =
+            new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (lock) {
+                        if (runClassifier2) {
+                            try {
+
+                                if( inceptionV3Dsp == null ) {
+                                    inceptionV3Dsp = new ImageClassifierFloatInception(getActivity());
+                                    inceptionV3Dsp.setNumThreads(currentNumThreads);
+
+                                    inceptionV3Dsp.useDSP();
+
+                                }
+                                System.out.println("inceptionV3Dsp" + " " + size_to_consider);
+
+                                classifyFrame2("Thread 2 inception_v3 dsp ",inceptionV3Dsp,4);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
+    private Runnable periodicClassifyForThreadinceptionV3Dsp5 =
+            new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (lock) {
+                        if (runClassifier2) {
+                            try {
+
+                                if( inceptionV3Dsp == null ) {
+                                    inceptionV3Dsp = new ImageClassifierFloatInception(getActivity());
+                                    inceptionV3Dsp.setNumThreads(currentNumThreads);
+
+                                    inceptionV3Dsp.useDSP();
+
+                                }
+                                System.out.println("inceptionV3Dsp" + " " + size_to_consider);
+
+                                classifyFrame2("Thread 2 inception_v3 dsp ",inceptionV3Dsp,5);
 
                             } catch (IOException e) {
                                 e.printStackTrace();
@@ -2703,6 +3756,118 @@ public class Camera2BasicFragment extends Fragment
             new Runnable() {
                 @Override
                 public void run() {
+                    //synchronized (lock) {
+                        if (runClassifier2) {
+                            try {
+
+                                if( mobilenetV1Cpu == null ) {
+                                    mobilenetV1Cpu = new ImageClassifierFloatMobileNet (getActivity());
+                                    mobilenetV1Cpu.setNumThreads(currentNumThreads);
+
+
+                                }
+                                System.out.println("mobilenetV1Cpu" + " " + size_to_consider);
+
+                                classifyFrame2("Thread 2 mobilenet_v1 cpu ",mobilenetV1Cpu,1);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    //}
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
+
+    private Runnable periodicClassifyForThreadMobilenetV1Cpu2 =
+            new Runnable() {
+                @Override
+                public void run() {
+                   // synchronized (lock) {
+                        if (runClassifier2) {
+                            try {
+
+                                if( mobilenetV1Cpu == null ) {
+                                    mobilenetV1Cpu = new ImageClassifierFloatMobileNet (getActivity());
+                                    mobilenetV1Cpu.setNumThreads(currentNumThreads);
+
+
+                                }
+                                System.out.println("mobilenetV1Cpu" + " " + size_to_consider);
+
+                                classifyFrame2("Thread 2 mobilenet_v1 cpu ",mobilenetV1Cpu,2);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    //}
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
+    private Runnable periodicClassifyForThreadMobilenetV1Cpu3 =
+            new Runnable() {
+                @Override
+                public void run() {
+                    //synchronized (lock) {
+                        if (runClassifier2) {
+                            try {
+
+                                if( mobilenetV1Cpu == null ) {
+                                    mobilenetV1Cpu = new ImageClassifierFloatMobileNet (getActivity());
+                                    mobilenetV1Cpu.setNumThreads(currentNumThreads);
+
+
+                                }
+                                System.out.println("mobilenetV1Cpu" + " " + size_to_consider);
+
+                                classifyFrame2("Thread 2 mobilenet_v1 cpu ",mobilenetV1Cpu,3);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    //}
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+    private Runnable periodicClassifyForThreadMobilenetV1Cpu4 =
+            new Runnable() {
+                @Override
+                public void run() {
+                    //synchronized (lock) {
+                        if (runClassifier2) {
+                            try {
+
+                                if( mobilenetV1Cpu == null ) {
+                                    mobilenetV1Cpu = new ImageClassifierFloatMobileNet (getActivity());
+                                    mobilenetV1Cpu.setNumThreads(currentNumThreads);
+
+
+                                }
+                                System.out.println("mobilenetV1Cpu" + " " + size_to_consider);
+
+                                classifyFrame2("Thread 2 mobilenet_v1 cpu ",mobilenetV1Cpu,4);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    //}
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
+    private Runnable periodicClassifyForThreadMobilenetV1Cpu5 =
+            new Runnable() {
+                @Override
+                public void run() {
                     synchronized (lock) {
                         if (runClassifier2) {
                             try {
@@ -2715,7 +3880,7 @@ public class Camera2BasicFragment extends Fragment
                                 }
                                 System.out.println("mobilenetV1Cpu" + " " + size_to_consider);
 
-                                classifyFrame2("Thread 2 mv1cpu ",mobilenetV1Cpu);
+                                classifyFrame2("Thread 2 mobilenet_v1 cpu ",mobilenetV1Cpu,5);
 
                             } catch (IOException e) {
                                 e.printStackTrace();
@@ -2726,7 +3891,6 @@ public class Camera2BasicFragment extends Fragment
                     //backgroundHandler2.post(periodicClassifyForThread);
                 }
             };
-
 
     private Runnable periodicClassifyForThreadMobilenetV1Gpu =
             new Runnable() {
@@ -2752,7 +3916,151 @@ public class Camera2BasicFragment extends Fragment
 
                                 System.out.println("mobilenetV1Gpu" + " " + size_to_consider);
 
-                                classifyFrame2("Thread 2 mv1gpu ",mobilenetV1Gpu);
+                                classifyFrame2("Thread 2 mobilenet_v1 gpu ",mobilenetV1Gpu,1);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
+    private Runnable periodicClassifyForThreadMobilenetV1Gpu2 =
+            new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (lock) {
+                        if (runClassifier2) {
+
+
+
+                            try {
+
+                                if( mobilenetV1Gpu == null ) {
+                                    mobilenetV1Gpu = new ImageClassifierFloatMobileNet(getActivity());
+                                    mobilenetV1Gpu.setNumThreads(currentNumThreads);
+
+                                    mobilenetV1Gpu.useGpu();
+
+
+
+
+                                }
+
+                                System.out.println("mobilenetV1Gpu" + " " + size_to_consider);
+
+                                classifyFrame2("Thread 2 mobilenet_v1 gpu ",mobilenetV1Gpu,2);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
+    private Runnable periodicClassifyForThreadMobilenetV1Gpu3 =
+            new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (lock) {
+                        if (runClassifier2) {
+
+
+
+                            try {
+
+                                if( mobilenetV1Gpu == null ) {
+                                    mobilenetV1Gpu = new ImageClassifierFloatMobileNet(getActivity());
+                                    mobilenetV1Gpu.setNumThreads(currentNumThreads);
+
+                                    mobilenetV1Gpu.useGpu();
+
+
+
+
+                                }
+
+                                System.out.println("mobilenetV1Gpu" + " " + size_to_consider);
+
+                                classifyFrame2("Thread 2 mobilenet_v1 gpu ",mobilenetV1Gpu,3);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
+    private Runnable periodicClassifyForThreadMobilenetV1Gpu4 =
+            new Runnable() {
+                @Override
+                public void run() {
+                    //synchronized (lock) {
+                        if (runClassifier2) {
+
+
+
+                            try {
+
+                                if( mobilenetV1Gpu == null ) {
+                                    mobilenetV1Gpu = new ImageClassifierFloatMobileNet(getActivity());
+                                    mobilenetV1Gpu.setNumThreads(currentNumThreads);
+
+                                    mobilenetV1Gpu.useGpu();
+
+
+
+
+                                }
+
+                                System.out.println("mobilenetV1Gpu" + " " + size_to_consider);
+
+                                classifyFrame2("Thread 2 mobilenet_v1 gpu ",mobilenetV1Gpu,4);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    //}
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
+    private Runnable periodicClassifyForThreadMobilenetV1Gpu5 =
+            new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (lock) {
+                        if (runClassifier2) {
+
+
+
+                            try {
+
+                                if( mobilenetV1Gpu == null ) {
+                                    mobilenetV1Gpu = new ImageClassifierFloatMobileNet(getActivity());
+                                    mobilenetV1Gpu.setNumThreads(currentNumThreads);
+
+                                    mobilenetV1Gpu.useGpu();
+
+
+
+
+                                }
+
+                                System.out.println("mobilenetV1Gpu" + " " + size_to_consider);
+
+                                classifyFrame2("Thread 2 mobilenet_v1 gpu ",mobilenetV1Gpu,5);
 
                             } catch (IOException e) {
                                 e.printStackTrace();
@@ -2783,7 +4091,131 @@ public class Camera2BasicFragment extends Fragment
                                 }
                                 System.out.println("mobilenetV1Dsp" + " " + size_to_consider);
 
-                                classifyFrame2("Thread 2 mv1dsp ",mobilenetV1Dsp);
+                                classifyFrame2("Thread 2 mobilenet_v1 dsp ",mobilenetV1Dsp,1);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
+    private Runnable periodicClassifyForThreadMobilenetV1Dsp2 =
+            new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (lock) {
+                        if (runClassifier2) {
+                            try {
+
+                                if( mobilenetV1Dsp == null ) {
+                                    mobilenetV1Dsp = new ImageClassifierFloatMobileNetV2(getActivity());
+                                    mobilenetV1Dsp.setNumThreads(currentNumThreads);
+
+                                    mobilenetV1Dsp.useDSP();
+
+
+
+                                }
+                                System.out.println("mobilenetV1Dsp" + " " + size_to_consider);
+
+                                classifyFrame2("Thread 2 mobilenet_v1 dsp ",mobilenetV1Dsp,2);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
+    private Runnable periodicClassifyForThreadMobilenetV1Dsp3 =
+            new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (lock) {
+                        if (runClassifier2) {
+                            try {
+
+                                if( mobilenetV1Dsp == null ) {
+                                    mobilenetV1Dsp = new ImageClassifierFloatMobileNetV2(getActivity());
+                                    mobilenetV1Dsp.setNumThreads(currentNumThreads);
+
+                                    mobilenetV1Dsp.useDSP();
+
+
+
+                                }
+                                System.out.println("mobilenetV1Dsp" + " " + size_to_consider);
+
+                                classifyFrame2("Thread 2 mobilenet_v1 dsp ",mobilenetV1Dsp,3);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
+    private Runnable periodicClassifyForThreadMobilenetV1Dsp4 =
+            new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (lock) {
+                        if (runClassifier2) {
+                            try {
+
+                                if( mobilenetV1Dsp == null ) {
+                                    mobilenetV1Dsp = new ImageClassifierFloatMobileNetV2(getActivity());
+                                    mobilenetV1Dsp.setNumThreads(currentNumThreads);
+
+                                    mobilenetV1Dsp.useDSP();
+
+
+
+                                }
+                                System.out.println("mobilenetV1Dsp" + " " + size_to_consider);
+
+                                classifyFrame2("Thread 2 mobilenet_v1 dsp ",mobilenetV1Dsp,4);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
+    private Runnable periodicClassifyForThreadMobilenetV1Dsp5 =
+            new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (lock) {
+                        if (runClassifier2) {
+                            try {
+
+                                if( mobilenetV1Dsp == null ) {
+                                    mobilenetV1Dsp = new ImageClassifierFloatMobileNetV2(getActivity());
+                                    mobilenetV1Dsp.setNumThreads(currentNumThreads);
+
+                                    mobilenetV1Dsp.useDSP();
+
+
+
+                                }
+                                System.out.println("mobilenetV1Dsp" + " " + size_to_consider);
+
+                                classifyFrame2("Thread 2 mobilenet_v1 dsp ",mobilenetV1Dsp,5);
 
                             } catch (IOException e) {
                                 e.printStackTrace();
@@ -2812,7 +4244,91 @@ public class Camera2BasicFragment extends Fragment
                                 }
                                 System.out.println("mobilenetV2Cpu" + " " + size_to_consider);
 
-                                classifyFrame2("Thread 2 mv2cpu ",mobilenetV2Cpu);
+                                classifyFrame2("Thread 2 mobilenet_v2 cpu ",mobilenetV2Cpu,1);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
+    private Runnable periodicClassifyForThreadMobilenetV2Cpu2 =
+            new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (lock) {
+                        if (runClassifier2) {
+                            try {
+
+                                if( mobilenetV2Cpu == null ) {
+                                    mobilenetV2Cpu = new ImageClassifierFloatMobileNet (getActivity());
+                                    mobilenetV2Cpu.setNumThreads(currentNumThreads);
+
+
+                                }
+                                System.out.println("mobilenetV2Cpu" + " " + size_to_consider);
+
+                                classifyFrame2("Thread 2 mobilenet_v2 cpu ",mobilenetV2Cpu,2);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
+    private Runnable periodicClassifyForThreadMobilenetV2Cpu3 =
+            new Runnable() {
+                @Override
+                public void run() {
+                    //synchronized (lock) {
+                        if (runClassifier2) {
+                            try {
+
+                                if( mobilenetV2Cpu == null ) {
+                                    mobilenetV2Cpu = new ImageClassifierFloatMobileNet (getActivity());
+                                    mobilenetV2Cpu.setNumThreads(currentNumThreads);
+
+
+                                }
+                                System.out.println("mobilenetV2Cpu" + " " + size_to_consider);
+
+                                classifyFrame2("Thread 2 mobilenet_v2 cpu ",mobilenetV2Cpu,3);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    //}
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
+    private Runnable periodicClassifyForThreadMobilenetV2Cpu4 =
+            new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (lock) {
+                        if (runClassifier2) {
+                            try {
+
+                                if( mobilenetV2Cpu == null ) {
+                                    mobilenetV2Cpu = new ImageClassifierFloatMobileNet (getActivity());
+                                    mobilenetV2Cpu.setNumThreads(currentNumThreads);
+
+
+                                }
+                                System.out.println("mobilenetV2Cpu" + " " + size_to_consider);
+
+                                classifyFrame2("Thread 2 mobilenet_v2 cpu ",mobilenetV2Cpu,4);
 
                             } catch (IOException e) {
                                 e.printStackTrace();
@@ -2825,7 +4341,69 @@ public class Camera2BasicFragment extends Fragment
             };
 
 
+    private Runnable periodicClassifyForThreadMobilenetV2Cpu5 =
+            new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (lock) {
+                        if (runClassifier2) {
+                            try {
+
+                                if( mobilenetV2Cpu == null ) {
+                                    mobilenetV2Cpu = new ImageClassifierFloatMobileNet (getActivity());
+                                    mobilenetV2Cpu.setNumThreads(currentNumThreads);
+
+
+                                }
+                                System.out.println("mobilenetV2Cpu" + " " + size_to_consider);
+
+                                classifyFrame2("Thread 2 mobilenet_v2 cpu ",mobilenetV2Cpu,5);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
     private Runnable periodicClassifyForThreadMobilenetV2Gpu =
+            new Runnable() {
+                @Override
+                public void run() {
+                    //synchronized (lock) {
+                        if (runClassifier2) {
+
+
+
+                            try {
+
+                                if( mobilenetV2Gpu == null ) {
+                                    mobilenetV2Gpu = new ImageClassifierFloatMobileNetV2(getActivity());
+                                    mobilenetV2Gpu.setNumThreads(currentNumThreads);
+
+                                    mobilenetV2Gpu.useGpu();
+                                    System.out.println("mobilenetV2Gpu" + " " + size_to_consider);
+
+                                }
+
+
+
+                                classifyFrame2("Thread 2 mobilenet 2 gpu ",mobilenetV2Gpu,1);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    //}
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
+    private Runnable periodicClassifyForThreadMobilenetV2Gpu2 =
             new Runnable() {
                 @Override
                 public void run() {
@@ -2847,7 +4425,109 @@ public class Camera2BasicFragment extends Fragment
 
 
 
-                                classifyFrame2("Thread 2 mv2gpu ",mobilenetV2Gpu);
+                                classifyFrame2("Thread 2 mobilenet 2 gpu ",mobilenetV2Gpu,2);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
+    private Runnable periodicClassifyForThreadMobilenetV2Gpu3 =
+            new Runnable() {
+                @Override
+                public void run() {
+                    //synchronized (lock) {
+                        if (runClassifier2) {
+
+
+
+                            try {
+
+                                if( mobilenetV2Gpu == null ) {
+                                    mobilenetV2Gpu = new ImageClassifierFloatMobileNetV2(getActivity());
+                                    mobilenetV2Gpu.setNumThreads(currentNumThreads);
+
+                                    mobilenetV2Gpu.useGpu();
+                                    System.out.println("mobilenetV2Gpu" + " " + size_to_consider);
+
+                                }
+
+
+
+                                classifyFrame2("Thread 2 mobilenet 2 gpu ",mobilenetV2Gpu,3);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    //}
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
+    private Runnable periodicClassifyForThreadMobilenetV2Gpu4 =
+            new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (lock) {
+                        if (runClassifier2) {
+
+
+
+                            try {
+
+                                if( mobilenetV2Gpu == null ) {
+                                    mobilenetV2Gpu = new ImageClassifierFloatMobileNetV2(getActivity());
+                                    mobilenetV2Gpu.setNumThreads(currentNumThreads);
+
+                                    mobilenetV2Gpu.useGpu();
+                                    System.out.println("mobilenetV2Gpu" + " " + size_to_consider);
+
+                                }
+
+
+
+                                classifyFrame2("Thread 2 mobilenet 2 gpu ",mobilenetV2Gpu,4);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
+    private Runnable periodicClassifyForThreadMobilenetV2Gpu5 =
+            new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (lock) {
+                        if (runClassifier2) {
+
+
+
+                            try {
+
+                                if( mobilenetV2Gpu == null ) {
+                                    mobilenetV2Gpu = new ImageClassifierFloatMobileNetV2(getActivity());
+                                    mobilenetV2Gpu.setNumThreads(currentNumThreads);
+
+                                    mobilenetV2Gpu.useGpu();
+                                    System.out.println("mobilenetV2Gpu" + " " + size_to_consider);
+
+                                }
+
+
+
+                                classifyFrame2("Thread 2 mobilenet 2 gpu ",mobilenetV2Gpu,5);
 
                             } catch (IOException e) {
                                 e.printStackTrace();
@@ -2880,7 +4560,139 @@ public class Camera2BasicFragment extends Fragment
                                 System.out.println("mobilenetV2Dsp" + " " + size_to_consider);
 
 
-                                classifyFrame2("Thread 2 mv2dsp ",mobilenetV2Dsp);
+                                classifyFrame2("Thread 2 mobilenet_v2 dsp ",mobilenetV2Dsp,1);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
+    private Runnable periodicClassifyForThreadMobilenetV2Dsp2 =
+            new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (lock) {
+                        if (runClassifier2) {
+                            try {
+
+                                if( mobilenetV2Dsp == null ) {
+                                    mobilenetV2Dsp = new ImageClassifierFloatMobileNetV2(getActivity());
+                                    mobilenetV2Dsp.setNumThreads(currentNumThreads);
+
+                                    mobilenetV2Dsp.useDSP();
+
+
+
+                                }
+
+                                System.out.println("mobilenetV2Dsp" + " " + size_to_consider);
+
+
+                                classifyFrame2("Thread 2 mobilenet_v2 dsp ",mobilenetV2Dsp,2);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
+    private Runnable periodicClassifyForThreadMobilenetV2Dsp3 =
+            new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (lock) {
+                        if (runClassifier2) {
+                            try {
+
+                                if( mobilenetV2Dsp == null ) {
+                                    mobilenetV2Dsp = new ImageClassifierFloatMobileNetV2(getActivity());
+                                    mobilenetV2Dsp.setNumThreads(currentNumThreads);
+
+                                    mobilenetV2Dsp.useDSP();
+
+
+
+                                }
+
+                                System.out.println("mobilenetV2Dsp" + " " + size_to_consider);
+
+
+                                classifyFrame2("Thread 2 mobilenet_v2 dsp ",mobilenetV2Dsp,3);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
+    private Runnable periodicClassifyForThreadMobilenetV2Dsp4 =
+            new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (lock) {
+                        if (runClassifier2) {
+                            try {
+
+                                if( mobilenetV2Dsp == null ) {
+                                    mobilenetV2Dsp = new ImageClassifierFloatMobileNetV2(getActivity());
+                                    mobilenetV2Dsp.setNumThreads(currentNumThreads);
+
+                                    mobilenetV2Dsp.useDSP();
+
+
+
+                                }
+
+                                System.out.println("mobilenetV2Dsp" + " " + size_to_consider);
+
+
+                                classifyFrame2("Thread 2 mobilenet_v2 dsp ",mobilenetV2Dsp,4);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    //classifyFrame("Thread 2");
+                    //backgroundHandler2.post(periodicClassifyForThread);
+                }
+            };
+
+    private Runnable periodicClassifyForThreadMobilenetV2Dsp5 =
+            new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (lock) {
+                        if (runClassifier2) {
+                            try {
+
+                                if( mobilenetV2Dsp == null ) {
+                                    mobilenetV2Dsp = new ImageClassifierFloatMobileNetV2(getActivity());
+                                    mobilenetV2Dsp.setNumThreads(currentNumThreads);
+
+                                    mobilenetV2Dsp.useDSP();
+
+
+
+                                }
+
+                                System.out.println("mobilenetV2Dsp" + " " + size_to_consider);
+
+
+                                classifyFrame2("Thread 2 mobilenet_v2 dsp ",mobilenetV2Dsp,5);
 
                             } catch (IOException e) {
                                 e.printStackTrace();
@@ -3043,15 +4855,11 @@ public class Camera2BasicFragment extends Fragment
     /** Classifies a frame from the preview stream. */
 
 
-    private void classifyFrame2(String thread_name, ImageClassifier classifierNow) throws IOException {
+    private void classifyFrame2(String thread_name, ImageClassifier classifierNow, int batchSize) throws IOException {
+
 
         Log.d("Thread Name ", thread_name + "  " + SystemClock.uptimeMillis() );
 
-        Context context1;
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            context1 = getContext();
-        }
 
 
         if (classifierNow == null || getActivity() == null) {
@@ -3069,13 +4877,11 @@ public class Camera2BasicFragment extends Fragment
         SpannableStringBuilder textToShow2 = new SpannableStringBuilder();
 
 
-        Bitmap bmFrame = mediaMetadataRetriever.getFrameAtTime(10000);
 
 
         //Bitmap bitmap = textureView.getBitmap(classifier.getImageSizeX(), classifier.getImageSizeY());
 
-        Bitmap resizedBitmap = Bitmap.createScaledBitmap(
-                bmFrame, classifier.getImageSizeX(), classifier.getImageSizeY(), false);
+
 
 
 //        Bitmap bitmap2 = textureView.getBitmap(classifierNow.getImageSizeX(), classifierNow.getImageSizeY());
@@ -3084,9 +4890,11 @@ public class Camera2BasicFragment extends Fragment
 
 
 
-        Long l2 = classifierNow.classifyFrame(resizedBitmap, textToShow2,thread_name,2);
-        resizedBitmap.recycle();
+        Long l2 = classifierNow.classifyFrame(resizedBitmap, textToShow2,thread_name,batchSize,SystemClock.uptimeMillis());
+        //resizedBitmap.recycle();
 
+
+        System.out.println(thread_name + " batchsize " + batchSize + " response time " + l2 );
 
 
         total2+=l2;
@@ -3099,20 +4907,20 @@ public class Camera2BasicFragment extends Fragment
         String text2 = "Thread 2 " + Double.toString(avg2);
         //textView2.setText(text2);
 
-
-        Float f1 = cpuTemperature1("cat /sys/class/thermal/thermal_zone1/temp");
-        float f2 = cpuTemperature1("cat /sys/class/thermal/thermal_zone2/temp");
-        Float f3 = cpuTemperature1("cat /sys/class/thermal/thermal_zone3/temp");
-        Float f4 = cpuTemperature1("cat /sys/class/thermal/thermal_zone4/temp");
-        Float f5 = cpuTemperature1("cat /sys/class/thermal/thermal_zone7/temp");
-        Float f6 = cpuTemperature1("cat /sys/class/thermal/thermal_zone8/temp");
-        Float f7 = cpuTemperature1("cat /sys/class/thermal/thermal_zone9/temp");
-        Float f8 = cpuTemperature1("cat /sys/class/thermal/thermal_zone10/temp");
-
-        System.out.println(f1);
-
-        String temps = f1.toString() + "\t" + Float.toString(f2) + "\t" + f3.toString() + "\t" + f4.toString() + "\t" +
-                f5.toString() + "\t" + f6.toString() + "\t" + f7.toString() + "\t" + f8.toString() + "\t";
+//
+//        Float f1 = cpuTemperature1("cat /sys/class/thermal/thermal_zone1/temp");
+//        float f2 = cpuTemperature1("cat /sys/class/thermal/thermal_zone2/temp");
+//        Float f3 = cpuTemperature1("cat /sys/class/thermal/thermal_zone3/temp");
+//        Float f4 = cpuTemperature1("cat /sys/class/thermal/thermal_zone4/temp");
+//        Float f5 = cpuTemperature1("cat /sys/class/thermal/thermal_zone7/temp");
+//        Float f6 = cpuTemperature1("cat /sys/class/thermal/thermal_zone8/temp");
+//        Float f7 = cpuTemperature1("cat /sys/class/thermal/thermal_zone9/temp");
+//        Float f8 = cpuTemperature1("cat /sys/class/thermal/thermal_zone10/temp");
+//
+//        System.out.println(f1);
+//
+//        String temps = f1.toString() + "\t" + Float.toString(f2) + "\t" + f3.toString() + "\t" + f4.toString() + "\t" +
+//                f5.toString() + "\t" + f6.toString() + "\t" + f7.toString() + "\t" + f8.toString() + "\t";
 
 
 
