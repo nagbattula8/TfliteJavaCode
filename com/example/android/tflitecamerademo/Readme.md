@@ -39,7 +39,7 @@ Initializes the model with model_name on the device specified (CPU, GPU or DSP)
 	
 	In 'For loop baseline.txt' file, you can find code for the baseline scheduler implementation.
 	
-	In 
+	In 'onlineSchedulerActual.txt' you can find code for the online scheduler implementation, both in serial manner and parallel manner.
 
 ImageClassifier.java:
 	
