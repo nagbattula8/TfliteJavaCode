@@ -22,8 +22,10 @@ Initializes the model with model_name on the device specified (CPU, GPU or DSP)
 	$modelname_loadtimes[]: indicates if a model is loaded or not on CPU, GPU or DSP
 
 	$modelname_queue: a queue for different models initialized with size = wait time before they are to be batched and executed
+	
+	Find the logic for baseline or online scheduler in between the lines "//baseline or online scheduler code start" and "//baseline or online scheduler code end"
 
-	Logic inside for loop to implement online scheduler:
+	Logic inside the for loop to implement online scheduler:
 
 		For a time t
 
@@ -34,6 +36,8 @@ Initializes the model with model_name on the device specified (CPU, GPU or DSP)
 		C. Execute each batched model in B.
 		D. If a model instance arrives at time t, add it to its respective queue.
 		Or else add empty element to each queue because we removed an element from each queue in B.
+	
+	In 
 
 ImageClassifier.java:
 	
