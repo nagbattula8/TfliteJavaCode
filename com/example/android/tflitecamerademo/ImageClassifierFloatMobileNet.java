@@ -21,6 +21,8 @@ import android.os.SystemClock;
 import org.tensorflow.lite.Tensor;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 /** This classifier works with the float MobileNet model. */
 public class ImageClassifierFloatMobileNet extends ImageClassifier {
@@ -104,6 +106,15 @@ public class ImageClassifierFloatMobileNet extends ImageClassifier {
   protected void runInference2(int tentative) {
 
       labelProbArray = new float[tentative][getNumLabels()];
+
+    imgData =
+            ByteBuffer.allocateDirect(
+                    tentative
+                            * 224
+                            * 224
+                            * 3
+                            * getNumBytesPerChannel());
+    imgData.order(ByteOrder.nativeOrder());
 
 
     Tensor t1 = tflite.getInputTensor(0);

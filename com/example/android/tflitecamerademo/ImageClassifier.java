@@ -168,9 +168,9 @@ public abstract class ImageClassifier {
     imgData =
             ByteBuffer.allocateDirect(
                     tentative_batch_size
-                            * getImageSizeX()
-                            * getImageSizeY()
-                            * DIM_PIXEL_SIZE
+                            * 224
+                            * 224
+                            * 3
                             * getNumBytesPerChannel());
     imgData.order(ByteOrder.nativeOrder());
 

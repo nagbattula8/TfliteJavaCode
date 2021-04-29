@@ -1698,9 +1698,9 @@ public class Camera2BasicFragment extends Fragment
             }
 
 
-            //baseline or online scheduler code
+            //baseline or online scheduler code start
 
-            for ( int i = 0; i < timings[timings.length-1]+200; i++ ) {
+            for ( int i = 0; i < timings[timings.length-1]+200; i++ ) { // online scheduler parallel execution
 
                 System.out.println("Time now in ms " + SystemClock.uptimeMillis());
 
@@ -1867,19 +1867,19 @@ public class Camera2BasicFragment extends Fragment
 
                         switch (batchSize ){
                             case 1:
-                                backgroundHandler.post(periodicClassifyForThreadinceptionV1Gpu);
+                                backgroundHandler2.post(periodicClassifyForThreadinceptionV1Gpu);
                                 break;
                             case 2:
-                                backgroundHandler.post(periodicClassifyForThreadinceptionV1Gpu2);
+                                backgroundHandler2.post(periodicClassifyForThreadinceptionV1Gpu2);
                                 break;
                             case 3:
-                                backgroundHandler.post(periodicClassifyForThreadinceptionV1Gpu3);
+                                backgroundHandler2.post(periodicClassifyForThreadinceptionV1Gpu3);
                                 break;
                             case 4:
-                                backgroundHandler.post(periodicClassifyForThreadinceptionV1Gpu4);
+                                backgroundHandler2.post(periodicClassifyForThreadinceptionV1Gpu4);
                                 break;
                             case 5:
-                                backgroundHandler.post(periodicClassifyForThreadinceptionV1Gpu5);
+                                backgroundHandler2.post(periodicClassifyForThreadinceptionV1Gpu5);
                                 break;
                         }
 
@@ -1896,19 +1896,19 @@ public class Camera2BasicFragment extends Fragment
 
                         switch (batchSize) {
                             case 1:
-                                backgroundHandler.post(periodicClassifyForThreadinceptionV1Dsp);
+                                backgroundHandler3.post(periodicClassifyForThreadinceptionV1Dsp);
                                 break;
                             case 2:
-                                backgroundHandler.post(periodicClassifyForThreadinceptionV1Dsp2);
+                                backgroundHandler3.post(periodicClassifyForThreadinceptionV1Dsp2);
                                 break;
                             case 3:
-                                backgroundHandler.post(periodicClassifyForThreadinceptionV1Dsp3);
+                                backgroundHandler3.post(periodicClassifyForThreadinceptionV1Dsp3);
                                 break;
                             case 4:
-                                backgroundHandler.post(periodicClassifyForThreadinceptionV1Dsp4);
+                                backgroundHandler3.post(periodicClassifyForThreadinceptionV1Dsp4);
                                 break;
                             case 5:
-                                backgroundHandler.post(periodicClassifyForThreadinceptionV1Dsp5);
+                                backgroundHandler3.post(periodicClassifyForThreadinceptionV1Dsp5);
                                 break;
 
                         }
@@ -2136,19 +2136,19 @@ public class Camera2BasicFragment extends Fragment
                         isLoadedInceptionV3[1] = true;
 
                         switch (batchSize) {
-                            case 1:backgroundHandler.post(periodicClassifyForThreadInceptionV3Gpu);
+                            case 1:backgroundHandler2.post(periodicClassifyForThreadInceptionV3Gpu);
                                 break;
                             case 2:
-                                backgroundHandler.post(periodicClassifyForThreadInceptionV3Gpu2);
+                                backgroundHandler2.post(periodicClassifyForThreadInceptionV3Gpu2);
                                 break;
                             case 3:
-                                backgroundHandler.post(periodicClassifyForThreadInceptionV3Gpu3);
+                                backgroundHandler2.post(periodicClassifyForThreadInceptionV3Gpu3);
                                 break;
                             case 4:
-                                backgroundHandler.post(periodicClassifyForThreadInceptionV3Gpu4);
+                                backgroundHandler2.post(periodicClassifyForThreadInceptionV3Gpu4);
                                 break;
                             case 5:
-                                backgroundHandler.post(periodicClassifyForThreadInceptionV3Gpu5);
+                                backgroundHandler2.post(periodicClassifyForThreadInceptionV3Gpu5);
                                 break;
 
                         }
@@ -2170,19 +2170,19 @@ public class Camera2BasicFragment extends Fragment
 
                         switch (batchSize) {
                             case 1:
-                                backgroundHandler.post(periodicClassifyForThreadinceptionV3Dsp);
+                                backgroundHandler3.post(periodicClassifyForThreadinceptionV3Dsp);
                                 break;
                             case 2:
-                                backgroundHandler.post(periodicClassifyForThreadinceptionV3Dsp2);
+                                backgroundHandler3.post(periodicClassifyForThreadinceptionV3Dsp2);
                                 break;
                             case 3:
-                                backgroundHandler.post(periodicClassifyForThreadinceptionV3Dsp3);
+                                backgroundHandler3.post(periodicClassifyForThreadinceptionV3Dsp3);
                                 break;
                             case 4:
-                                backgroundHandler.post(periodicClassifyForThreadinceptionV3Dsp4);
+                                backgroundHandler3.post(periodicClassifyForThreadinceptionV3Dsp4);
                                 break;
                             case 5:
-                                backgroundHandler.post(periodicClassifyForThreadinceptionV3Dsp5);
+                                backgroundHandler3.post(periodicClassifyForThreadinceptionV3Dsp5);
                                 break;
 
                         }
@@ -2311,19 +2311,19 @@ public class Camera2BasicFragment extends Fragment
                         isLoadedMobileNet[1] = true;
                         switch (batchSize) {
                             case 1:
-                                backgroundHandler.post(periodicClassifyForThreadMobilenetV1Gpu);
+                                backgroundHandler2.post(periodicClassifyForThreadMobilenetV1Gpu);
                                 break;
                             case 2:
-                                backgroundHandler.post(periodicClassifyForThreadMobilenetV1Gpu2);
+                                backgroundHandler2.post(periodicClassifyForThreadMobilenetV1Gpu2);
                                 break;
                             case 3:
-                                backgroundHandler.post(periodicClassifyForThreadMobilenetV1Gpu3);
+                                backgroundHandler2.post(periodicClassifyForThreadMobilenetV1Gpu3);
                                 break;
                             case 4:
-                                backgroundHandler.post(periodicClassifyForThreadMobilenetV1Gpu4);
+                                backgroundHandler2.post(periodicClassifyForThreadMobilenetV1Gpu4);
                                 break;
                             case 5:
-                                backgroundHandler.post(periodicClassifyForThreadMobilenetV1Gpu5);
+                                backgroundHandler2.post(periodicClassifyForThreadMobilenetV1Gpu5);
                                 break;
 
                         }
@@ -2344,19 +2344,19 @@ public class Camera2BasicFragment extends Fragment
 
                         switch (batchSize) {
                             case 1:
-                                backgroundHandler.post(periodicClassifyForThreadMobilenetV1Dsp);
+                                backgroundHandler3.post(periodicClassifyForThreadMobilenetV1Dsp);
                                 break;
                             case 2:
-                                backgroundHandler.post(periodicClassifyForThreadMobilenetV1Dsp2);
+                                backgroundHandler3.post(periodicClassifyForThreadMobilenetV1Dsp2);
                                 break;
                             case 3:
-                                backgroundHandler.post(periodicClassifyForThreadMobilenetV1Dsp3);
+                                backgroundHandler3.post(periodicClassifyForThreadMobilenetV1Dsp3);
                                 break;
                             case 4:
-                                backgroundHandler.post(periodicClassifyForThreadMobilenetV1Dsp4);
+                                backgroundHandler3.post(periodicClassifyForThreadMobilenetV1Dsp4);
                                 break;
                             case 5:
-                                backgroundHandler.post(periodicClassifyForThreadMobilenetV1Dsp5);
+                                backgroundHandler3.post(periodicClassifyForThreadMobilenetV1Dsp5);
                                 break;
 
                         }
@@ -2494,19 +2494,19 @@ public class Camera2BasicFragment extends Fragment
 
                         switch (batchSize) {
                             case 1:
-                                backgroundHandler.post(periodicClassifyForThreadMobilenetV2Gpu);
+                                backgroundHandler2.post(periodicClassifyForThreadMobilenetV2Gpu);
                                 break;
                             case 2:
-                                backgroundHandler.post(periodicClassifyForThreadMobilenetV2Gpu2);
+                                backgroundHandler2.post(periodicClassifyForThreadMobilenetV2Gpu2);
                                 break;
                             case 3:
-                                backgroundHandler.post(periodicClassifyForThreadMobilenetV2Gpu3);
+                                backgroundHandler2.post(periodicClassifyForThreadMobilenetV2Gpu3);
                                 break;
                             case 4:
-                                backgroundHandler.post(periodicClassifyForThreadMobilenetV2Gpu4);
+                                backgroundHandler2.post(periodicClassifyForThreadMobilenetV2Gpu4);
                                 break;
                             case 5:
-                                backgroundHandler.post(periodicClassifyForThreadMobilenetV2Gpu5);
+                                backgroundHandler2.post(periodicClassifyForThreadMobilenetV2Gpu5);
                                 break;
 
                         }
@@ -2526,19 +2526,19 @@ public class Camera2BasicFragment extends Fragment
 
                         switch (batchSize) {
                             case 1:
-                                backgroundHandler.post(periodicClassifyForThreadMobilenetV2Dsp);
+                                backgroundHandler3.post(periodicClassifyForThreadMobilenetV2Dsp);
                                 break;
                             case 2:
-                                backgroundHandler.post(periodicClassifyForThreadMobilenetV2Dsp2);
+                                backgroundHandler3.post(periodicClassifyForThreadMobilenetV2Dsp2);
                                 break;
                             case 3:
-                                backgroundHandler.post(periodicClassifyForThreadMobilenetV2Dsp3);
+                                backgroundHandler3.post(periodicClassifyForThreadMobilenetV2Dsp3);
                                 break;
                             case 4:
-                                backgroundHandler.post(periodicClassifyForThreadMobilenetV2Dsp4);
+                                backgroundHandler3.post(periodicClassifyForThreadMobilenetV2Dsp4);
                                 break;
                             case 5:
-                                backgroundHandler.post(periodicClassifyForThreadMobilenetV2Dsp5);
+                                backgroundHandler3.post(periodicClassifyForThreadMobilenetV2Dsp5);
                                 break;
 
                         }
@@ -2723,7 +2723,7 @@ public class Camera2BasicFragment extends Fragment
 
 
 
-
+            //baseline or online scheduler code start
             System.out.println(q.size());
             System.out.println("All execs " + execList.size());
 
@@ -4858,7 +4858,6 @@ public class Camera2BasicFragment extends Fragment
     private void classifyFrame2(String thread_name, ImageClassifier classifierNow, int batchSize) throws IOException {
 
 
-        Log.d("Thread Name ", thread_name + "  " + SystemClock.uptimeMillis() );
 
 
 
@@ -4888,13 +4887,14 @@ public class Camera2BasicFragment extends Fragment
 
 
 
+        Log.d("Thread Name ", thread_name + "  " + SystemClock.uptimeMillis() + " batch " );
 
 
         Long l2 = classifierNow.classifyFrame(resizedBitmap, textToShow2,thread_name,batchSize,SystemClock.uptimeMillis());
         //resizedBitmap.recycle();
 
 
-        System.out.println(thread_name + " batchsize " + batchSize + " response time " + l2 );
+        System.out.println(thread_name + " batchsize " + batchSize + " response time " + SystemClock.uptimeMillis() );
 
 
         total2+=l2;

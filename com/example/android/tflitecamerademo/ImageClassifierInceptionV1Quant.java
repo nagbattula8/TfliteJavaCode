@@ -21,6 +21,8 @@ import android.os.SystemClock;
 import org.tensorflow.lite.Tensor;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 /**
  * This classifier works with the quantized MobileNet model.
@@ -101,6 +103,15 @@ public class ImageClassifierInceptionV1Quant extends ImageClassifier {
     @Override
     protected void runInference2(int tentative) {
          labelProbArray = new byte[tentative][getNumLabels()];
+
+        imgData =
+                ByteBuffer.allocateDirect(
+                        tentative
+                                * 224
+                                * 224
+                                * 3
+                                * getNumBytesPerChannel());
+        imgData.order(ByteOrder.nativeOrder());
 
 
         Tensor t1 = tflite.getInputTensor(0);
