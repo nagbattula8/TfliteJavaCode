@@ -37,6 +37,8 @@ Initializes the model with model_name on the device specified (CPU, GPU or DSP)
 		D. If a model instance arrives at time t, add it to its respective queue.
 		Or else add empty element to each queue because we removed an element from each queue in B.
 	
+	In 'For loop baseline.txt' file, you can find code for the baseline scheduler implementation.
+	
 	In 
 
 ImageClassifier.java:
